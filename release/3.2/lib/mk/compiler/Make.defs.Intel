@@ -180,9 +180,12 @@ ifeq ($(fname),ifc)
   # -u makes "implicit none" the default
   ifeq (0,$(shell test $(_ifcmajorver) -le 11 ; echo $$?))
     # -w95 gets rid of some annoying warnings about REAL*8, etc
-    deffcomflags = -w95 -FI -u
+    # DFM (10/8/15) -- remove -FI flag because it causes issues with f90
+#    deffcomflags = -w95 -FI -u
+    deffcomflags = -w95  -u
   else
-    deffcomflags = -FI -u
+#    deffcomflags = -FI -u
+    deffcomflags =  -u
   endif
   deffdbgflags = -g
   deffoptflags = -O3

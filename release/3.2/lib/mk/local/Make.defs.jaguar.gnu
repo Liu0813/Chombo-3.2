@@ -3,7 +3,7 @@
 ##
 ## NOTE: everything is always in 64bit mode
 
-makefiles+=local/Make.defs.jaguar
+makefiles+=local/Make.defs.jaguar.gnu
 
 CXX=CC
 FC=ftn

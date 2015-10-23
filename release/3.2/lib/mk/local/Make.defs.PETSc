@@ -12,7 +12,7 @@
 # and before:
 #    Make.defs.<hostname> Make.defs.config Make.rules
 
-makefiles+=Make.defs.local
+makefiles+=Make.defs.PETSc
 
 ################################################################
 
@@ -94,7 +94,7 @@ makefiles+=Make.defs.local
 
 ## Override the default values here
 # this is/was in Make.defs.  Get PETSc configuration vars
-include $(PETSC_DIR)/conf/variables
+include $(PETSC_DIR)/lib/petsc/conf/variables
 petscincflags = $(PETSC_CC_INCLUDES)
 petsclibflags = $(PETSC_KSP_LIB) 
 

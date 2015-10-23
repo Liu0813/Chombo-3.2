@@ -237,6 +237,7 @@ CCProjector::CCProjector()
   // have to initialize this to _something_!
   m_finest_level = false;
   m_physBCPtr = NULL;
+  m_bottomSolverLevel = NULL; 
   m_limitSolverCoarsening = false;
 }
 
@@ -250,6 +251,11 @@ CCProjector::~CCProjector()
       m_physBCPtr = NULL;
     }
 
+   if(m_bottomSolverLevel != NULL) {
+
+      delete m_bottomSolverLevel;
+      m_bottomSolverLevel = NULL;
+   }
   // everything else should be automatic here
 }
 
@@ -1046,10 +1052,13 @@ void CCProjector::doSyncOperations(Vector<LevelData<FArrayBox>* >& a_velocity,
                                    Vector<LevelData<FArrayBox>* >& a_lambda,
                                    const Real a_newTime, const Real a_dtLevel)
 {
-  AMRMultiGrid<LevelData<FArrayBox> >* dspSolver = new
+   RelaxSolver<LevelData<FArrayBox> >* bottomSolver = new RelaxSolver<LevelData<FArrayBox> >;
+   bottomSolver-> m_verbosity = s_verbosity;
+
+   AMRMultiGrid<LevelData<FArrayBox> >* dspSolver = new
     AMRMultiGrid<LevelData<FArrayBox> >;
 
-  defineMultiGrid(*dspSolver, a_velocity, false);
+  defineMultiGrid(*dspSolver, bottomSolver, a_velocity, false);
 
   // now call sync projection
   doSyncProjection(a_velocity, a_newTime, a_dtLevel, *dspSolver);
@@ -1059,13 +1068,16 @@ void CCProjector::doSyncOperations(Vector<LevelData<FArrayBox>* >& a_velocity,
 
   AMRMultiGrid<LevelData<FArrayBox> >* cvdcSolver = new
     AMRMultiGrid<LevelData<FArrayBox> >;
-  defineMultiGrid(*cvdcSolver, a_velocity, false);
+  defineMultiGrid(*cvdcSolver, bottomSolver, a_velocity, false);
 
   // now do freestream preservation solve
   computeVDCorrection(a_lambda, a_newTime, a_dtLevel, *cvdcSolver);
 
   // Need to delete cvdcSolver->m_bottomSolver from AMRMultiGrid.
   delete cvdcSolver;
+
+  // Now delete the bottom solver since AMRMultiGrid won't do this
+  delete bottomSolver;
 }
 
 // ---------------------------------------------------------------
@@ -1073,10 +1085,13 @@ void CCProjector::doPostRegridOps(Vector<LevelData<FArrayBox>* >& a_velocity,
                                   Vector<LevelData<FArrayBox>* >& a_lambda,
                                   const Real a_dt, const Real a_time)
 {
-  AMRMultiGrid<LevelData<FArrayBox> >* bigSolverPtr = new
+  //
+  RelaxSolver<LevelData<FArrayBox> >* bottomSolver = new RelaxSolver<LevelData<FArrayBox> >;
+
+   AMRMultiGrid<LevelData<FArrayBox> >* bigSolverPtr = new
     AMRMultiGrid<LevelData<FArrayBox> >;
 
-  defineMultiGrid(*bigSolverPtr, a_lambda, false);
+  defineMultiGrid(*bigSolverPtr, bottomSolver, a_lambda, false);
 
   // for inviscid flow, only do this
   // now do freestream preservation solve
@@ -1084,6 +1099,9 @@ void CCProjector::doPostRegridOps(Vector<LevelData<FArrayBox>* >& a_velocity,
 
   // Need to delete bigSolverPtr->m_bottomSolver from AMRMultiGrid.
   delete bigSolverPtr;
+
+  //Now delete the bottom solver since AMRMultiGrid won't do this
+  delete bottomSolver;
 }
 
 // ---------------------------------------------------------------
@@ -1649,11 +1667,15 @@ void CCProjector::doInitialSyncOperations(Vector<LevelData<FArrayBox>* >& a_vel,
                                           Vector<LevelData<FArrayBox>* >& a_lambda,
                                           const Real a_newTime, const Real a_dtSync)
 {
-  // now can define multilevel solver
+   //
+   RelaxSolver<LevelData<FArrayBox> >* bottomSolver = new RelaxSolver<LevelData<FArrayBox> >;
+   bottomSolver->m_verbosity = s_verbosity;  
+
+   // now can define multilevel solver
   AMRMultiGrid<LevelData<FArrayBox> >* ispSolverPtr = new
     AMRMultiGrid<LevelData<FArrayBox> >;
 
-  defineMultiGrid(*ispSolverPtr, a_vel, false);
+  defineMultiGrid(*ispSolverPtr, bottomSolver, a_vel, false);
 
   // now call sync projection
   initialSyncProjection(a_vel, a_newTime, a_dtSync, *ispSolverPtr);
@@ -1662,21 +1684,34 @@ void CCProjector::doInitialSyncOperations(Vector<LevelData<FArrayBox>* >& a_vel,
   delete ispSolverPtr;
   AMRMultiGrid<LevelData<FArrayBox> >* cvdcSolverPtr = new
     AMRMultiGrid<LevelData<FArrayBox> >;
-  defineMultiGrid(*cvdcSolverPtr, a_lambda, true);
+  defineMultiGrid(*cvdcSolverPtr, bottomSolver, a_lambda, true);
 
   // now do freestream preservation solve
   computeVDCorrection(a_lambda, a_newTime, a_dtSync, *cvdcSolverPtr);
+
+  delete cvdcSolverPtr; //Kris R.
+
+  //Now delete the bottom solver since AMRMultiGrid won't do this 
+  delete bottomSolver;
+
 }
 
 // ---------------------------------------------------------------
 void CCProjector::initialVelocityProject(Vector<LevelData<FArrayBox>* >& a_vel,
                                          bool a_homogeneousCFBC)
 {
-  // first need to define solver
+   //
+   RelaxSolver<LevelData<FArrayBox> >* bottomSolver = new RelaxSolver<LevelData<FArrayBox> >;
+   bottomSolver->m_verbosity = s_verbosity;
+
+   // first need to define solver
   AMRMultiGrid<LevelData<FArrayBox> > bigSolver;
-  defineMultiGrid(bigSolver, a_vel, false);
+  defineMultiGrid(bigSolver, bottomSolver,a_vel, false);
 
   initialVelocityProject(a_vel, bigSolver, a_homogeneousCFBC);
+
+  //New delete the bottom solver since AMRMultiGrid won't do this
+  delete bottomSolver;
 }
 
 // ---------------------------------------------------------------
@@ -1835,6 +1870,7 @@ void CCProjector::initialVelocityProject(Vector<LevelData<FArrayBox>* >& a_vel,
 
 // ---------------------------------------------------------------
 void CCProjector::defineMultiGrid(AMRMultiGrid<LevelData<FArrayBox> >& a_solver,
+                                  LinearSolver<LevelData<FArrayBox> >* a_bottomSolver,
                                   const Vector<LevelData<FArrayBox>* >& a_vel,
                                   bool a_freestreamSolve)
 {
@@ -1852,93 +1888,37 @@ void CCProjector::defineMultiGrid(AMRMultiGrid<LevelData<FArrayBox> >& a_solver,
   Vector<Real> allDx(vectorSize);
   Vector<int> allRefRatios(vectorSize);
 
-  levelProj = this;
-  // Now levelProj is at level m_level.
+  levelProj = this; // Now levelProj is at level m_level.
 
-  for (int lev = m_level; lev<=finestLevel; lev++)
+  //Since we are always going to need the grids on this level do that now 
+  allGrids[m_level] = a_vel[m_level]->getBoxes();
+
+  for (int lev = m_level+1; lev<=finestLevel; lev++)
     {
-      // for now, get grids from velocity arrays
-      const DisjointBoxLayout& levelGrids = a_vel[lev]->getBoxes();
-      allGrids[lev] = levelGrids;
-      // allDomains[lev] = levelProj->dProblem();
-      // allDx[lev] = levelProj->dx();
+       levelProj = levelProj->fineProjPtr(); //levelProj now points to the same level as index lev
+       allGrids[lev] = a_vel[lev]->getBoxes();
+       allRefRatios[lev-1] = levelProj->nRefCrse(); //ref ratio to next finer level belongs to that level for CCProjector
 
-      // since nRef should be refinement ratio to next finer level,
-      // advance the levelProj pointer to next finer level here.
-      // Now levelProj is at level lev.
-      if (!levelProj->isFinestLevel())
-        {
-          // Make levelProj be at level lev+1, instead of at level lev.
-          levelProj = levelProj->fineProjPtr();
-          // Now levelProj is at level lev+1.
-          // refinement ratio from level lev to level lev+1
-          allRefRatios[lev] = levelProj->nRefCrse();
-        }
     }
   // Now levelProj is at level finestLevel.
 
-  // if coarser level exists. also need to include that for boundary
-  // conditions
+  //Kris R.
+  levelProj = this; //now levelProj is at m_level
 
-  //DisjointBoxLayout* crseGridsPtr = NULL;  //not used?  (ndk)
+  //now deal with the case where there are coarser levels than this one
+  for(int lev = m_level-1; lev >=0; lev--) {
 
-  ProblemDomain baseDomain;
-  Real baseDx;
-  if (m_level > 0)
-    {
-      CH_assert(m_crseProjPtr != NULL);
-      const DisjointBoxLayout& crseLevelGrids
-        = a_vel[m_level-1]->getBoxes();
-      allGrids[m_level-1] = crseLevelGrids;
-      // allDomains[m_level-1] = m_crseProjPtr->dProblem();
-      // allDx[m_level-1] = m_crseProjPtr->dx();
-      // refinement ratio from level m_level-1 to level m_level
-      allRefRatios[m_level-1] = nRefCrse();
-      if (m_level == 1)
-        {
-          levelProj = this->crseProjPtr();
-          // Now levelProj is at level 0.
-          baseDomain = levelProj->dProblem();
-          baseDx = levelProj->dx();
-        }
-    }
-  else // m_level == 0
-    {
-      baseDomain = dProblem();
-      baseDx = dx();
-    }
+     allRefRatios[lev] = levelProj->nRefCrse(); //levelProj points to the level above lev
 
-  // We have filled in allRefRatios[m_level-1:finestLevel-1].
-  // Need to fill in allRefRatios[0:m_level-2].
-  // Need to fill in allGrids[0:m_level-2].
-  // Also need baseDomain == allDomains[0] and baseDx == allDx[0].
+     levelProj = levelProj->crseProjPtr(); //lecvelProj now points to the same level as lev
+     allGrids[lev] = levelProj->m_Pi.getBoxes();
+  }
 
-  if (m_level > 1) // m_level >= 2
-    {
-      levelProj = this->crseProjPtr();
-      // Now levelProj is at level m_level-1 > 0.
-      // refinement ratio from level m_level-2 to level m_level-1
-      allRefRatios[m_level-2] = levelProj->nRefCrse();
-      levelProj = levelProj->crseProjPtr();
-      // Now levelProj is at level m_level-2 >= 0.
-      allGrids[m_level-2] = a_vel[m_level-2]->getBoxes();
-      for (int lev = m_level-3; lev >= 0; lev--) // m_level >= 3
-        {
-          // Now levelProj is at level lev+1.
-          // refinement ratio from level lev to level lev+1
-          allRefRatios[lev] = levelProj->nRefCrse();
-          allGrids[lev] = a_vel[lev]->getBoxes();
-          if (lev > 0)
-            {
-              // Now levelProj is at level lev+1.
-              levelProj = levelProj->crseProjPtr();
-              // Now levelProj is at level lev.
-            }
-        }
-      // Now levelProj is at level 0.
-      baseDomain = levelProj->dProblem();
-      baseDx = levelProj->dx();
-    }
+  //levelProj is now at level 0. This is crucial for making the LHS operator consistent
+  CH_assert(levelProj->m_level == 0);
+
+  ProblemDomain baseDomain = levelProj->dProblem(); //Kris R.
+  Real baseDx = levelProj->dx(); //Kris R.
 
   AMRPoissonOpFactory localPoissonOpFactory;
   // physBCPtr = m_physBCPtr->FreestreamCorrBC();
@@ -1960,7 +1940,7 @@ void CCProjector::defineMultiGrid(AMRMultiGrid<LevelData<FArrayBox> >& a_solver,
   // AMRMultiGrid<LevelData<FArrayBox> >& a_solver
   a_solver.define(baseDomain,
                   localPoissonOpFactory,
-                  bottomSolverPtr,
+                  a_bottomSolver,
                   finestLevel+1);
   // We also want to use m_limitCoarsening:
   // if true, only do multigrid coarsening down to next coarser
@@ -2058,14 +2038,22 @@ void CCProjector::defineSolverMGlevel(const DisjointBoxLayout& a_grids,
 
   // You really need to delete this when you're done with a_solver.
   // But m_bottomSolver is a protected field of AMRMultiGrid.
-  RelaxSolver<LevelData<FArrayBox> >* bottomSolverPtr = new
-    RelaxSolver<LevelData<FArrayBox> >;
-  bottomSolverPtr->m_verbosity = s_verbosity;
+
+  //Delete previous bottom solver -- Kris R.
+  if(m_bottomSolverLevel != NULL)
+    {
+      delete m_bottomSolverLevel;
+      m_bottomSolverLevel = NULL;
+    }
+  
+  RelaxSolver<LevelData<FArrayBox> >* newBottomPtr = new RelaxSolver<LevelData<FArrayBox> >; 
+  newBottomPtr->m_verbosity = s_verbosity;
+  m_bottomSolverLevel = newBottomPtr;
 
   // AMRMultiGrid<LevelData<FArrayBox> >& a_solver
   m_solverMGlevel.define(baseDomain, // on either this level or coarser level
                          localPoissonOpFactory,
-                         bottomSolverPtr,
+                         m_bottomSolverLevel,
                          numSolverLevels);
   m_solverMGlevel.m_verbosity = s_verbosity;
   m_solverMGlevel.m_eps = 1e-10;

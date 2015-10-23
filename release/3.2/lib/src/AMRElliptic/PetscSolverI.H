@@ -277,6 +277,17 @@ int PetscSolver<T>::setup_solver( const T& a_phi )
 
       // Add values to A
       ierr = formMatrix( m_mat, &a_phi ); CHKERRQ(ierr);
+      {
+	char str[256];
+	strcpy (str,"-");
+	strcat (str,m_prestring);
+#if PETSC_VERSION_GE(3,6,0)
+	strcat (str,"pc_gamg_square_graph 20");
+#else
+	strcat (str,"pc_gamg_square_graph true");
+#endif
+	ierr = PetscOptionsInsertString(str);CHKERRQ(ierr);
+      }
 
       // create solvers
       PetscBool ism = PETSC_FALSE;
@@ -402,7 +413,10 @@ int PetscSolver<T>::solve_private( T& a_phi,
   MPI_Comm wcomm = PETSC_COMM_SELF;
 #endif
   // setup if needed
-  ierr = setup_solver( a_phi ); CHKERRQ(ierr);
+  ierr = setup_solver( a_phi );CHKERRQ(ierr);
+#ifdef CH_MPI
+  MPI_Barrier(Chombo_MPI::comm);
+#endif
   CH_START(t2);
   // form RHS -- m_bb
   Real idx2 = 1.e0/(this->m_dx*this->m_dx);
@@ -411,10 +425,11 @@ int PetscSolver<T>::solve_private( T& a_phi,
   //rhsOperation(a_rhs); 
   // this is an interface in case some operations are needed on the rhs
   // the default does nothing
-
+  ierr = VecSetOption(m_bb,VEC_IGNORE_OFF_PROC_ENTRIES,PETSC_TRUE);CHKERRQ(ierr);
+  ierr = VecSetOption(m_xx,VEC_IGNORE_OFF_PROC_ENTRIES,PETSC_TRUE);CHKERRQ(ierr);
   // add X and B from Chombo to PETSc and add stuff for EB to B
-  ierr = VecSet( m_xx, 0.); CHKERRQ(ierr);
-  ierr = VecSet( m_bb, 0.); CHKERRQ(ierr);
+  ierr = VecSet( m_xx, 0.);CHKERRQ(ierr);
+  ierr = VecSet( m_bb, 0.);CHKERRQ(ierr);
   for ( dit = a_rhs.dataIterator() ; dit.ok() ; ++dit )
     {
       const BaseFab<Real> &rhsFab = getRegFab(a_rhs,dit);
@@ -443,47 +458,50 @@ int PetscSolver<T>::solve_private( T& a_phi,
                 {
                   v += addV;
                 }
-              ierr = VecSetValues(m_bb,1,&ki,&v,INSERT_VALUES); CHKERRQ(ierr);
+              ierr = VecSetValues(m_bb,1,&ki,&v,INSERT_VALUES);CHKERRQ(ierr);
               //if (ki==2)pout() << "    *************************** b2(2)=" << v << endl;
               //if ( nonZeroInit )
               //{
               v = xFab(iv,mm);
-              ierr = VecSetValues(m_xx,1,&ki,&v,INSERT_VALUES); CHKERRQ(ierr);
+              ierr = VecSetValues(m_xx,1,&ki,&v,INSERT_VALUES);CHKERRQ(ierr);
               //}
             }
         }
     }
-  ierr = VecAssemblyBegin( m_bb ); CHKERRQ(ierr);
-  ierr = VecAssemblyEnd( m_bb ); CHKERRQ(ierr);
+  ierr = VecAssemblyBegin( m_bb );CHKERRQ(ierr);
+  ierr = VecAssemblyEnd( m_bb );CHKERRQ(ierr);
   //if (nonZeroInit)
   //{
-  ierr = VecAssemblyBegin( m_xx ); CHKERRQ(ierr);
-  ierr = VecAssemblyEnd( m_xx ); CHKERRQ(ierr);
+  ierr = VecAssemblyBegin( m_xx );CHKERRQ(ierr);
+  ierr = VecAssemblyEnd( m_xx );CHKERRQ(ierr);
   //}
   CH_STOP(t2);
   // null space for periodic BCs
   if ( m_null )
-  {
+    {
     MatNullSpace nullsp;
     ierr = MatNullSpaceCreate(wcomm,PETSC_TRUE,0,PETSC_NULL,&nullsp);CHKERRQ(ierr);
     CH_assert(m_ksp); // not used yet, needs fix for nonlinear
-    ierr = KSPSetNullSpace( m_ksp, nullsp ); CHKERRQ(ierr);
+    ierr = MatSetNullSpace( m_mat, nullsp );CHKERRQ(ierr);
   }
   // solve
   CH_START(t3);
+#ifdef CH_MPI
+  MPI_Barrier(Chombo_MPI::comm);
+#endif
   if ( m_snes )
     {
-      ierr = SNESSolve( m_snes, m_bb, m_xx );     CHKERRQ(ierr);
+      ierr = SNESSolve( m_snes, m_bb, m_xx );CHKERRQ(ierr);
 
     }
   else
     {
-      ierr = KSPSolve( m_ksp, m_bb, m_xx );     CHKERRQ(ierr);
+      ierr = KSPSolve( m_ksp, m_bb, m_xx );CHKERRQ(ierr);
     }
   CH_STOP(t3);
   // put solution into output
   CH_START(t4);
-  ierr = putPetscInChombo( a_phi, m_xx );     CHKERRQ(ierr);
+  ierr = putPetscInChombo( a_phi, m_xx );CHKERRQ(ierr);
   a_phi.exchange();
   CH_STOP(t4);
 #endif
@@ -519,7 +537,7 @@ int PetscSolver<T>::solve_mfree_private( T& a_phi,
 #endif
   PetscErrorCode ierr;
   // setup if needed
-  ierr = setup_solver( a_phi ); CHKERRQ(ierr);
+  ierr = setup_solver( a_phi );CHKERRQ(ierr);
 
   //create an operator matrix shell with same dimensions as m_mat
   PetscInt m, n, M, N;
@@ -538,8 +556,10 @@ int PetscSolver<T>::solve_mfree_private( T& a_phi,
   Real addV;
 
   // add X and B from Chombo to PETSc and add stuff for EB to B. This is just copy-pasted...
-  ierr = VecSet( m_xx, 0.); CHKERRQ(ierr);
-  ierr = VecSet( m_bb, 0.); CHKERRQ(ierr);
+  ierr = VecSetOption(m_bb,VEC_IGNORE_OFF_PROC_ENTRIES,PETSC_TRUE);CHKERRQ(ierr);
+  ierr = VecSetOption(m_xx,VEC_IGNORE_OFF_PROC_ENTRIES,PETSC_TRUE);CHKERRQ(ierr);
+  ierr = VecSet( m_xx, 0.);CHKERRQ(ierr);
+  ierr = VecSet( m_bb, 0.);CHKERRQ(ierr);
   const DisjointBoxLayout &dbl = a_phi.disjointBoxLayout(); 
   const PetscInt nc = a_rhs.nComp();
   for (DataIterator dit = a_rhs.dataIterator() ; dit.ok() ; ++dit )
@@ -565,17 +585,17 @@ int PetscSolver<T>::solve_mfree_private( T& a_phi,
                 {
                   v += addV;
                 }
-              ierr = VecSetValues(m_bb,1,&ki,&v,INSERT_VALUES); CHKERRQ(ierr);
+              ierr = VecSetValues(m_bb,1,&ki,&v,INSERT_VALUES);CHKERRQ(ierr);
               v = xFab(iv,mm);
-              ierr = VecSetValues(m_xx,1,&ki,&v,INSERT_VALUES); CHKERRQ(ierr);
+              ierr = VecSetValues(m_xx,1,&ki,&v,INSERT_VALUES);CHKERRQ(ierr);
              
             }
         }
     }
-  ierr = VecAssemblyBegin( m_bb ); CHKERRQ(ierr);
-  ierr = VecAssemblyEnd( m_bb ); CHKERRQ(ierr);
-  ierr = VecAssemblyBegin( m_xx ); CHKERRQ(ierr);
-  ierr = VecAssemblyEnd( m_xx ); CHKERRQ(ierr);
+  ierr = VecAssemblyBegin( m_bb );CHKERRQ(ierr);
+  ierr = VecAssemblyEnd( m_bb );CHKERRQ(ierr);
+  ierr = VecAssemblyBegin( m_xx );CHKERRQ(ierr);
+  ierr = VecAssemblyEnd( m_xx );CHKERRQ(ierr);
   //the ksp needed here is a bit different from m_ksp, becasue the preconditioner and main operator are different 
   KSP ksp;
   KSPCreate( wcomm, &ksp );

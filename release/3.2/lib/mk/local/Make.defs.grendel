@@ -21,7 +21,7 @@
 # and before:
 #    Make.defs.<hostname> Make.defs.config Make.rules
 
-makefiles+=Make.defs.local
+makefiles+=Make.defs.grendel
 
 ################################################################
 

@@ -1,3 +1,5 @@
+# -*- Mode: Makefile; Modified: "Tue 16 Aug 2005 13:11:09 by dbs"; -*-
+#####
 ##### Below this point, a user should not mess with
 ##### the makefile unless he/she really know what he/she  is doing.
 ##### Below is the part that interacts with the Chombo Make system.
@@ -18,6 +20,8 @@ OBJ_LOCAL = $(CXX_SOURCES) $(FORT_SOURCES) $(C_SOURCES) $(F_SOURCES)
 OBJ_LOCAL := $(OBJ_LOCAL:.cpp=.o)
 OBJ_LOCAL := $(OBJ_LOCAL:.ChF=.o)
 OBJ_LOCAL := $(OBJ_LOCAL:.F=.o)
+OBJ_LOCAL := $(OBJ_LOCAL:.f90=.o)
+OBJ_LOCAL := $(OBJ_LOCAL:.F90=.o)
 OBJ_LOCAL := $(OBJ_LOCAL:.c=.o)
 OBJ_LOCAL := $(OBJ_LOCAL:.f=.o)
 OBJ_LOCAL := $(addprefix $(OBJECT_PREFIX),$(OBJ_LOCAL))
@@ -27,6 +31,8 @@ DEPEND_LOCAL = $(CXX_SOURCES) $(FORT_SOURCES) $(C_SOURCES) $(F_SOURCES)
 DEPEND_LOCAL := $(DEPEND_LOCAL:.cpp=.d)
 DEPEND_LOCAL := $(DEPEND_LOCAL:.ChF=.d)
 DEPEND_LOCAL := $(DEPEND_LOCAL:.F=.d)
+DEPEND_LOCAL := $(DEPEND_LOCAL:.f90=.d)
+DEPEND_LOCAL := $(DEPEND_LOCAL:.F90=.d)
 DEPEND_LOCAL := $(DEPEND_LOCAL:.c=.d)
 DEPEND_LOCAL := $(DEPEND_LOCAL:.f=.d)
 DEPEND_LOCAL := $(addprefix $(DEPENDS_PREFIX),$(DEPEND_LOCAL))
@@ -72,8 +78,11 @@ appcppflags = $(INCLUDES_LOCAL)
 vpath %.cpp $(VPATH_LOCAL)
 vpath %.ChF $(VPATH_LOCAL)
 vpath %.F $(VPATH_LOCAL)
+vpath %.f90 $(VPATH_LOCAL)
+vpath %.F90 $(VPATH_LOCAL)
 vpath %.c $(VPATH_LOCAL)
 vpath %.f $(VPATH_LOCAL)
 
 AUTONAME=FALSE#  #tell Make.rules not to compute object files automatically
 include $(CHOMBO_HOME)/mk/Make.rules
+

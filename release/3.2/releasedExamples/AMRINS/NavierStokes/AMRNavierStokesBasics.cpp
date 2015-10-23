@@ -105,6 +105,10 @@ AMRNavierStokes::AMRNavierStokes() : m_cfl(0.5),
   m_lambda_new_ptr = NULL;
   m_lambda_old_ptr = NULL;
 
+  m_bottomSolver  = NULL; 
+  m_velocityIBC   = NULL; 
+  m_lambdaIBC     = NULL; 
+  m_scalarIBC     = Vector<PhysIBC*>(1,NULL); 
 #ifdef DEBUG
   m_vel_save_ptr = NULL;
 #endif
@@ -137,6 +141,11 @@ AMRNavierStokes::AMRNavierStokes(AMRLevel* a_coarser_level_ptr,
   m_lambda_new_ptr = NULL;
   m_lambda_old_ptr = NULL;
 
+  m_bottomSolver  = NULL; 
+  m_velocityIBC   = NULL; 
+  m_lambdaIBC     = NULL; 
+  m_scalarIBC     = Vector<PhysIBC*>(1,NULL); 
+
 #ifdef DEBUG
   m_vel_save_ptr = NULL;
 #endif
@@ -168,6 +177,11 @@ AMRNavierStokes::AMRNavierStokes(AMRLevel* a_coarser_level_ptr,
   m_lambda_new_ptr = NULL;
   m_lambda_old_ptr = NULL;
 
+  m_bottomSolver  = NULL; 
+  m_velocityIBC   = NULL; 
+  m_lambdaIBC     = NULL; 
+  m_scalarIBC     = Vector<PhysIBC*>(1,NULL); 
+  
 #ifdef DEBUG
   m_vel_save_ptr = NULL;
 #endif
@@ -268,6 +282,10 @@ AMRNavierStokes::~AMRNavierStokes()
         }
     }
 
+/* 
+ * Since m_patchGod scalars is now a RefCountedPtr we don't have
+ * to worry about deleting this anymore. Kris R.
+ 
   nScalComp = m_patchGodScalars.size();
   for (int comp = 0; comp < nScalComp; comp++)
   {
@@ -277,6 +295,40 @@ AMRNavierStokes::~AMRNavierStokes()
       m_patchGodScalars[comp] = NULL;
     }
   }
+  */
+
+  //
+  if(m_bottomSolver != NULL) {
+
+     delete m_bottomSolver;
+     m_bottomSolver = NULL;
+  }
+
+  //
+  if(m_velocityIBC != NULL) {
+
+     delete m_velocityIBC;
+     m_velocityIBC = NULL;
+  }
+
+  //
+  if(m_lambdaIBC !=NULL) {
+
+     delete m_lambdaIBC;
+     m_lambdaIBC = NULL;
+  }
+
+  //
+  nScalComp = m_scalarIBC.size();
+  for(int comp=0; comp < nScalComp; comp++) {
+
+     if(m_scalarIBC[comp] != NULL) {
+
+        delete m_scalarIBC[comp];
+        m_scalarIBC[comp] = NULL;
+     }
+  }
+
 }
 
 // ---------------------------------------------------------------

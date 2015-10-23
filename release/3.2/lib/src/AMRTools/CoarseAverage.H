@@ -41,7 +41,7 @@ public:
   /**
      Destructor.
   */
-  ~CoarseAverage();
+  virtual ~CoarseAverage();
 
   ///
   /**

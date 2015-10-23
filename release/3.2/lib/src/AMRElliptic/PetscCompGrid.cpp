@@ -8,10 +8,9 @@
  */
 #endif
 
-#ifdef CH_USE_PETSC
-
 #include "PetscCompGrid.H"
 #include "IntVectSet.H"
+#include "SPMD.H"
 
 #include "NamespaceHeader.H"
  
@@ -35,38 +34,56 @@ std::ostream& operator<< (std::ostream& os, GID_type a_type)
 //
 CompBC::~CompBC()
 {
+#ifdef CH_USE_PETSC
   PetscFree(m_Rcoefs);
+#endif
 }
 
-CompBC::CompBC(int a_order, IntVect a_nGhosts) : m_Rcoefs(0), m_isDefined(false)
+CompBC::CompBC(int a_order, IntVect a_nGhosts) 
 {
+#ifdef CH_USE_PETSC
+  m_Rcoefs = 0;
+#endif
+
+  m_isDefined = false;
   define(a_order,a_nGhosts);
 }
 
 void 
 CompBC::define(int a_order, IntVect a_nGhosts)
 {  
+#ifdef CH_USE_PETSC
   if (m_Rcoefs) PetscFree(m_Rcoefs);
+#endif
   if (a_nGhosts[0]!=1 && a_nGhosts[0]!=2)
     MayDay::Error("Unsupported number of ghosts in CompBC");
   
   m_nGhosts = a_nGhosts; m_nSources = a_order;
+
+#ifdef CH_USE_PETSC
   PetscMalloc1(m_nSources*m_nGhosts[0],&m_Rcoefs);
+#else
+  m_Rcoefs.resize(m_nSources*m_nGhosts[0]);
+#endif
 
   m_isDefined = false; // needs to be set
 }
 
+#ifdef CH_USE_PETSC
 PetscReal CompBC::getCoef(int a_iSrc, int a_iGhost)
+#else
+Real CompBC::getCoef(int a_iSrc, int a_iGhost)
+#endif
 {
   if (!m_isDefined) createCoefs();
   return m_Rcoefs[a_iGhost*m_nSources + a_iSrc];
 }
+
 //
 void 
 ConstDiriBC::createCoefs()
 {  
   m_isDefined=true;
-
   if (m_nSources==1) 
     {
       m_Rcoefs[0] = -1.;
@@ -148,6 +165,8 @@ ConstDiriBC::operator()( FArrayBox&           a_state,
 //
 // PetscCompGrid
 //
+
+#ifdef CH_USE_PETSC
 void
 PetscCompGrid::clean()
 {
@@ -416,7 +435,7 @@ PetscCompGrid::define( const ProblemDomain &a_cdomain,
 #endif
 
   // set GIDs & exchange to get process ghost ids
-  for (int ilev=0,gid=m_gid0;ilev<numLevs;ilev++)
+  for (PetscInt ilev=0,gid=m_gid0;ilev<numLevs;ilev++)
     {
       const DisjointBoxLayout& dbl = m_grids[ilev];
       // count and set ids
@@ -457,7 +476,7 @@ PetscCompGrid::createMatrix(int a_makePmat/*=0*/)
   int nGrids=m_domains.size(),nblockpts=pow((Real)m_patch_size,SpaceDim);
   IntVect nghost = getGhostVect();
   Vector<StencilTensor> stenVect;
-  Vector<StencilScalar> patchStencil;
+  Vector<StencilTensor> patchStencil;
   PetscInt *d_nnz, *o_nnz;
   PetscFunctionBeginUser;
 
@@ -567,7 +586,7 @@ PetscCompGrid::createMatrix(int a_makePmat/*=0*/)
 			      " failed to find "<< ivJ << endl;
 			    MayDay::Error("PetscCompGrid::createMatrix failed to find cell");
 			  }
-			  
+
 			  PetscInt gidj = gidfabJ(ivJ.iv(),0)*m_dof;
 			  if (gidj<0) 
 			    {
@@ -576,13 +595,13 @@ PetscCompGrid::createMatrix(int a_makePmat/*=0*/)
 			    }
 			  else if (gidj < m_gid0 || gidj >= mygidnext) // off proc value
 			    {
-			      StencilScalar &sten = patchStencil[patchidx]; // add to this row
+			      StencilTensor &sten = patchStencil[patchidx]; // add to this row
 			      // find patch that has this gidj
 			      IntVect iv = ivJ.iv();
 			      iv.coarsen(m_patch_size);          // get into block space
-			      StencilScalarValue &v0 = sten[IndexML(iv,ivJ.level())]; // will create if not there
-			      if (v0.value()==0.0) v0.setValue((Real)(gidj/nblockpts+1)); // put global index into stencil -- one based
-			      else CH_assert((PetscInt)v0.value()==(gidj/nblockpts)+1);
+			      StencilTensorValue &v0 = sten[IndexML(iv,ivJ.level())]; // will create if not there
+			      if (v0.value(0,0)==0.0) v0.setValue((Real)(gidj/nblockpts+1)); // put global index into stencil -- one based
+			      else CH_assert((PetscInt)v0.value(0,0)==(gidj/nblockpts)+1);
 			    }
 			}		      
 		    } // repart
@@ -663,7 +682,7 @@ PetscCompGrid::createMatrix(int a_makePmat/*=0*/)
 // finish off repartitioning
 if (m_repartition) 
     {
-#if PETSC_VERSION_LT(3,6,0)
+#if PETSC_VERSION_LT(3,5,4)
       ierr = MatGetVecs(m_mat,0,&m_origvec);CHKERRQ(ierr); // keep old vec around
 #else
       ierr = MatCreateVecs(m_mat,0,&m_origvec);CHKERRQ(ierr); // keep old vec around
@@ -684,8 +703,13 @@ if (m_repartition)
     {
       PetscViewer viewer;
       char suffix[30];
+#ifdef CH_MPI
+      MPI_Comm comm = Chombo_MPI::comm;
+#else
+      MPI_Comm comm = PETSC_COMM_SELF;
+#endif
       sprintf(suffix, "A%d.m",nGrids);
-      ierr = PetscViewerASCIIOpen(((PetscObject) m_mat)->comm, suffix, &viewer);CHKERRQ(ierr);
+      ierr = PetscViewerASCIIOpen(comm, suffix, &viewer);CHKERRQ(ierr);
       ierr = PetscViewerSetFormat(viewer, PETSC_VIEWER_ASCII_MATLAB);CHKERRQ(ierr);
       ierr = MatView(m_mat,viewer);CHKERRQ(ierr);
       ierr = PetscViewerDestroy(&viewer);
@@ -701,7 +725,7 @@ if (m_repartition)
 #undef __FUNCT__
 #define __FUNCT__ "permuteDataAndMaps"
 PetscErrorCode 
-PetscCompGrid::permuteDataAndMaps(Vector<StencilScalar> &patchStencil)
+PetscCompGrid::permuteDataAndMaps(Vector<StencilTensor> &patchStencil)
 {
   PetscErrorCode ierr;
   Mat graph, graph_new, new_mat;
@@ -725,12 +749,12 @@ PetscCompGrid::permuteDataAndMaps(Vector<StencilScalar> &patchStencil)
     ierr = MatMPIAIJSetPreallocation(graph,250,0,150,0);CHKERRQ(ierr);
     for (PetscInt ii=0,gidi=m_patchid0;ii<m_nlocrealpatches;ii++,gidi++)
       {
-	StencilScalar &sten = patchStencil[ii]; // add to this row
-	StencilScalar::const_iterator end = sten.end(); 
-	for (StencilScalar::const_iterator it = sten.begin(); it != end; ++it) 
+	StencilTensor &sten = patchStencil[ii]; // add to this row
+	StencilTensor::const_iterator end = sten.end(); 
+	for (StencilTensor::const_iterator it = sten.begin(); it != end; ++it) 
 	  {
 	    //const IndexML &ivJ = it->first;
-	    PetscInt gidj = (PetscInt)it->second.value() - 1; // zero based
+	    PetscInt gidj = (PetscInt)it->second.value(0,0) - 1; // zero based
 	    ierr = MatSetValues(graph,1,&gidi,1,&gidj,&v,INSERT_VALUES);CHKERRQ(ierr);
 	  }
       }
@@ -792,7 +816,7 @@ PetscCompGrid::permuteDataAndMaps(Vector<StencilScalar> &patchStencil)
   // get new matrix, get maps to CH
   {
     IS old_new_geqs;
-    int ii,jj;
+    PetscInt ii,jj;
 
     // old_new_geqs: the old GIDS of my new locals
     ierr = PetscMalloc1(nloc_new*m_dof, &tidx);CHKERRQ(ierr);
@@ -847,12 +871,12 @@ static bool s_check_row_sum = false;
 
 void 
 PetscCompGrid::applyBCs( IntVect a_iv, int a_ilev, const DataIndex &a_dummy, Box a_dombox, 
-                         StencilTensor &a_sten )
+			 StencilTensor &a_sten )
 {
   CH_TIME("PetscCompGrid::applyBCs");
   int nSources = -1;
-  Vector<Vector<StenScalarNode> > new_vals;
-  
+  Vector<Vector<StencilNode> > new_vals;
+
   // count degrees, add to 'corners'
   Vector<IntVectSet> corners(CH_SPACEDIM);
   StencilTensor::const_iterator end2 = a_sten.end(); 
@@ -879,7 +903,7 @@ PetscCompGrid::applyBCs( IntVect a_iv, int a_ilev, const DataIndex &a_dummy, Box
           // get layer of ghost
           Box gbox(IntVect::Zero,IntVect::Zero); gbox.shift(jiv);
           Box inter = a_dombox & gbox;    CH_assert(inter.numPts()==0);
-          int igid = -1; // find which layer of ghost I am
+          PetscInt igid = -1; // find which layer of ghost I am
           do{
             igid++;
             gbox.grow(1);
@@ -904,6 +928,7 @@ PetscCompGrid::applyBCs( IntVect a_iv, int a_ilev, const DataIndex &a_dummy, Box
 			    new_vals[i].resize(nSources); 
 			    for (int j = 0 ; j < nSources; j++ )
 			      {
+				new_vals[i][j].second.define(1); // have to define because it can be a tensor now, yuck
 				new_vals[i][j].second.setValue(mybc->getCoef(j,i));
 				new_vals[i][j].first.setLevel(a_ilev);
 			      }
@@ -913,8 +938,9 @@ PetscCompGrid::applyBCs( IntVect a_iv, int a_ilev, const DataIndex &a_dummy, Box
 		      {
 			CH_assert(ghostVect[0]==1); 
 			Real denom=2.;   new_vals.resize(1); new_vals[0].resize(2);
+			new_vals[0][0].second.define(1);           new_vals[0][1].second.define(1); // have to define because it can be a tensor now, yuck
 			new_vals[0][0].second.setValue(-5./denom); new_vals[0][1].second.setValue(1./denom);
-			new_vals[0][0].first.setLevel(a_ilev);  new_vals[0][1].first.setLevel(a_ilev);
+			new_vals[0][0].first.setLevel(a_ilev);     new_vals[0][1].first.setLevel(a_ilev);
 		      }		    
 		    // for debugging -- neumann
 		    if (s_check_row_sum)
@@ -943,7 +969,7 @@ PetscCompGrid::applyBCs( IntVect a_iv, int a_ilev, const DataIndex &a_dummy, Box
                         }
                       else CH_assert(a_dombox.contains(biv));
                     }
-                  StencilProject(kill,new_vals[igid],a_sten);
+                  StencilProject(kill,new_vals[igid], a_sten);
                   int nrm = a_sten.erase(kill);CH_assert(nrm==1);
                   break;
                 }
@@ -983,7 +1009,7 @@ PetscCompGrid::applyBCs( IntVect a_iv, int a_ilev, const DataIndex &a_dummy, Box
         }
     }
 }
-
+//
 // BCs have been removed (should not care).
 //
 void 
@@ -1012,7 +1038,7 @@ PetscCompGrid::InterpToCoarse(IntVect a_iv,int a_ilev,const DataIndex &a_di, Ste
           const FourthOrderInterpStencil *interp = m_FCStencils(bndryIndex,0);
           const FArrayBox &coarseToFineFab = interp->m_coarseToFineFab;
           const Vector<int> &coarseBaseIndices = interp->m_coarseBaseIndices;
-          Vector<StenScalarNode> new_vals(interp->m_stencilSize);
+          Vector<StencilNode> new_vals(interp->m_stencilSize);
           for (PetscInt cidx=0,kk=0;cidx < interp->m_stencilSize;cidx++)
             {
               IntVect civ = cjiv;
@@ -1036,11 +1062,15 @@ PetscCompGrid::InterpToCoarse(IntVect a_iv,int a_ilev,const DataIndex &a_di, Ste
       IntVect civ = mlivJ.iv();
       if (mlivJ.level()==a_ilev-1 && supgidfab(civ,0)<0)
         {
-          CH_assert(supgidfab(civ,0) == FINE_COVERED);    
+	  if (supgidfab(civ,0)!=FINE_COVERED) {
+	    pout() << "    ERROR row " << IndexML(a_iv,a_ilev) << ", column " << mlivJ << ", type = " << supgidfab(civ,0) << endl;
+	    pout() << "   Use nesting radius >= 3!!!" << endl;
+	    CH_assert(supgidfab(civ,0) == FINE_COVERED);
+	  }
           Real fineInterp = 1./(Real)nfine;
           const IntVect fivBase = civ*nref; // fine box low end to interp to
           Box fbox(IntVect::Zero,(nref-1)*IntVect::Unit); fbox.shift(fivBase);
-          Vector<StenScalarNode> new_vals(nfine);
+          Vector<StencilNode> new_vals(nfine);
           BoxIterator bit(fbox);
           for (int i=0; bit.ok(); ++bit,i++)
             {
@@ -1082,7 +1112,7 @@ PetscCompGrid::InterpToFine(IntVect a_iv, int a_ilev,const DataIndex &a_di, Sten
           const IntVect fivBase = jiv*nref; // fine box low end to interp to
           Box fbox(IntVect::Zero,(nref-1)*IntVect::Unit); fbox.shift(fivBase);
           int nfine = (int)pow((Real)nref,SpaceDim);
-          Vector<StenScalarNode> new_vals(nfine);
+          Vector<StencilNode> new_vals(nfine);
           Real fineInterp = 1./(Real)nfine;
           BoxIterator bit(fbox);
           for (int i=0; bit.ok(); ++bit,i++)
@@ -1117,7 +1147,7 @@ PetscCompGrid::AddStencilToMat(IntVect a_iv, int a_ilev,const DataIndex &a_di, S
 
   if (a_sten.size()*m_dof > 4096) MayDay::Error("PetscCompGrid::AddStencilToMat buffer (4096) too small");
   // get cols & vals
-  for (int ni=0,geq = this_gidfabJ(a_iv,0)*m_dof;ni<m_dof;ni++,geq++) vidx[ni] = geq;
+  for (PetscInt ni=0,geq = this_gidfabJ(a_iv,0)*m_dof;ni<m_dof;ni++,geq++) vidx[ni] = geq;
 
   StencilTensor::const_iterator end = a_sten.end(); 
   int ci=0,jj=0;
@@ -1145,12 +1175,15 @@ PetscCompGrid::AddStencilToMat(IntVect a_iv, int a_ilev,const DataIndex &a_di, S
           MayDay::Error("PetscCompGrid::AddStencilToMat failed to find gid");
         }
       const Real *vv = it->second.getVals();
+      if (*vv!=*vv) MayDay::Error("PetscCompGrid::AddStencilToMatit->second.getVals(0,0) is a NaN");
       for (int nj=0;nj<m_dof;nj++,gidj++,ci++) cols[ci] = gidj;   // columns
       for (int ni=0;ni<m_dof;ni++) 
         {
           for (int nj=0;nj<m_dof;nj++) 
             {
               double tt = vv[ni*m_dof + nj];
+	      if (tt!=tt) MayDay::Error("PetscCompGrid::AddStencilToMat found a NaN");
+	      if (abs(tt)>1.e300)  MayDay::Error("PetscCompGrid::AddStencilToMat found a BigNum");
               vals[ni*ncols + jj*m_dof + nj] = tt;
               summ += tt;
               abssum += Abs(tt);
@@ -1201,7 +1234,7 @@ IntVect PetscCompGrid::getCFStencil(const ProblemDomain &a_cdom, const IntVect a
               if ((offLo >= -m_CFStencilRad) &&
                   (offHi <= m_CFStencilRad))
                 { // both of these:  very narrow domain, you are in trouble
-                  MayDay::Error("FourthOrderFineInterp::define bad boxes");
+                  MayDay::Error("getCFStencil::define bad boxes");
                 }
               if (offLo >= -m_CFStencilRad) // -1 or -2
                 dist[idir] = offLo;
@@ -1279,7 +1312,7 @@ PetscCompGrid::putPetscInChombo(Vec a_x, Vector<LevelData<FArrayBox> * > &a_phi)
   CH_TIME("PetscCompGrid::putPetscInChombo");
   PetscInt gid,nGrids=a_phi.size();
   PetscErrorCode ierr;
-  const int nc=a_phi[0]->nComp(), my0eq=nc*m_gid0; CH_assert(nc==m_dof);
+  const PetscInt nc=a_phi[0]->nComp(), my0eq=nc*m_gid0; CH_assert(nc==m_dof);
   const PetscScalar *avec;
   Vec xx;
   PetscFunctionBeginUser;
@@ -1307,7 +1340,7 @@ PetscCompGrid::putPetscInChombo(Vec a_x, Vector<LevelData<FArrayBox> * > &a_phi)
               const IntVect& iv = bit();
               if ( (gid=gidfab(iv,0)) >= 0)
                 {
-                  for (int i=nc*gid-my0eq,n=0;n<nc;n++,i++) phiFAB(iv,n) = avec[i];
+                  for (PetscInt i=nc*gid-my0eq,n=0;n<nc;n++,i++) phiFAB(iv,n) = avec[i];
                 }
               else
                 {
@@ -1322,6 +1355,8 @@ PetscCompGrid::putPetscInChombo(Vec a_x, Vector<LevelData<FArrayBox> * > &a_phi)
   PetscFunctionReturn(0);
 }
 
+#endif
+
 #include "NamespaceFooter.H"
 
-#endif
+

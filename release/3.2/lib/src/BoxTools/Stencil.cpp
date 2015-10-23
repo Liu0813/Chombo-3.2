@@ -86,7 +86,7 @@ operator<< (ostream&       os,
 {
   if (p.m_dof==1)
     {
-      os << p.value();
+      os << p.value(0,0);
     }
   else
     {
@@ -101,28 +101,28 @@ operator<< (ostream&       os,
   return os;
 }
 
-// StencilScalarValue::operator=
-StencilScalarValue& StencilScalarValue::operator=(const StencilScalarValue& p)
-{
-  m_val = p.m_val;
-  return *this;
-}
+// // StencilScalarValue::operator=
+// StencilScalarValue& StencilScalarValue::operator=(const StencilScalarValue& p)
+// {
+//   m_val = p.m_val;
+//   return *this;
+// }
 
-// StencilScalarValue:operator<<
-ostream&
-operator<< (ostream&       os,
-            const StencilScalarValue& p)
-{
-  os << p.value();
-  if (os.fail())
-    MayDay::Error("operator<<(ostream&,StencilScalarValue&) failed");
-  return os;
-}
+// // StencilScalarValue:operator<<
+// ostream&
+// operator<< (ostream&       os,
+//             const StencilScalarValue& p)
+// {
+//   os << p.value();
+//   if (os.fail())
+//     MayDay::Error("operator<<(ostream&,StencilScalarValue&) failed");
+//   return os;
+// }
 
 // A specialized operator that "distributes" a_sten[jiv] with a_new: a_sten += a_new*a_sten[jiv]. 
 // Would like to remove a_sten[jiv] but that messes up iterators.
 void
-StencilProject(IndexML a_mliv, Vector<StenScalarNode> &a_scales, StencilTensor &a_sten)
+StencilProject(IndexML a_mliv, Vector<StencilNode> &a_scales, StencilTensor &a_sten)
 {
   //CH_TIME("PetscCompGrid::projectStencil");
   StencilTensorValue ghostNode = a_sten[a_mliv]; // node getting deleted (distributed)
@@ -131,11 +131,37 @@ StencilProject(IndexML a_mliv, Vector<StenScalarNode> &a_scales, StencilTensor &
   // add scaled
   for (int i=0;i<a_scales.size();i++) 
     {
-      StenScalarNode &target = a_scales[i];
+      StencilNode &target = a_scales[i];
       CH_assert(target.first != a_mliv); // this OK in theory but never done now
       StencilTensorValue &val = a_sten[target.first]; val.define(root->second); // only place where nodes are added
-      val.axpy(target.second.value(),root->second);
+      val.apply(target.second,root->second);
     }
 }
 
+// axpy for tensor nodes: this = this + scale * node
+void 
+StencilTensorValue::apply(StencilTensorValue &a_scale, StencilTensorValue &a_node) 
+{
+  CHECK_DOF; // little DGEMM
+  if (a_node.m_dof != m_dof) MayDay::Abort("StencilTensorValue::apply node DOF mismatch");
+  if (a_node.m_dof != a_scale.m_dof && a_scale.m_dof != 1) MayDay::Abort("StencilTensorValue::apply scale DOF mismatch");
+  if (a_scale.m_dof == 1) {
+    for (int i=0;i<m_dof*m_dof;i++) m_val[i] += a_scale.m_val[0]*a_node.m_val[i];
+  } else {
+    for (int i=0;i<m_dof;i++) {
+      for (int j=0;j<m_dof;j++) {
+	m_val[i*m_dof + j] = 0.;
+	for (int k=0;k<m_dof;k++) {
+	  m_val[i*m_dof + j] += a_scale.m_val[i*m_dof + k]*a_node.m_val[k*m_dof + j];
+	  if (m_val[i*m_dof + j] != m_val[i*m_dof + j]) {
+	    pout() << "StencilTensorValue:apply have a Nan: index:" <<i<<","<<j<<","<<k<<".  m_dof="<< m_dof<< std::endl;
+	    pout() << "\t\t scale is Nan:" << (a_scale.m_val[i*m_dof + k] != a_scale.m_val[i*m_dof + k]) << std::endl;
+	    pout() << "\t\t node is Nan:" << (a_node.m_val[k*m_dof + j] != a_node.m_val[k*m_dof + j]) << std::endl;
+	    MayDay::Error("PetscCompGrid::AddStencilToMatit->second.getVals(0,0) is a NaN");
+	  }
+	}
+      }
+    }
+  }
+}
 #include "NamespaceFooter.H"

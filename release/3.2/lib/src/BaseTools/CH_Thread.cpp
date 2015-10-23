@@ -9,7 +9,7 @@
 #endif
 
 #include "CH_Thread.H"
-#include "NamespaceHeader.H"
+#include "BaseNamespaceHeader.H"
 
 bool onThread0()
 {
@@ -23,4 +23,4 @@ bool onThread0()
 
 
 
-#include "NamespaceFooter.H"
+#include "BaseNamespaceFooter.H"
