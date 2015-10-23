@@ -8,14 +8,15 @@
  */
 #endif
 
-#ifdef CH_USE_PETSC
 
 #include "PetscCompGridVTO.H"
 #include "FluxBox.H"
+#include "IntVectSet.H"
 #include "NamespaceHeader.H"
 
 // derived ViscousTensor Operator class
 
+#ifdef CH_USE_PETSC
 void
 PetscCompGridVTO::clean()
 {
@@ -29,7 +30,6 @@ PetscCompGridVTO::createOpStencil(IntVect a_iv, int a_ilev,const DataIndex &a_di
   Real dx=m_dxs[a_ilev][0],idx2=1./(dx*dx);
   Real eta_x0,eta_x1,lam_x0,lam_x1,eta_y0,eta_y1,lam_y0,lam_y1;
   IntVect ivwst=IntVect::Zero,ivest=IntVect::Zero,ivsth=IntVect::Zero,ivnth=IntVect::Zero;
-  D_TERM(,,);
   //IntVect ivSW(-1,-1),ivSE(1,-1),ivNE(1,1),ivNW(-1,1);
   IntVect ivSW(IntVect::Unit),ivSE(IntVect::Unit),ivNE(IntVect::Unit),ivNW(IntVect::Unit);
   ivSW[1] = ivSW[0] = -1; // >= 2D
@@ -184,7 +184,6 @@ PetscCompGridVTO::createOpStencil(IntVect a_iv, int a_ilev,const DataIndex &a_di
       }
     } // kk=1:2 loop
   
-  // debug
   if (0)
     {
       Real summ=0.;
@@ -218,6 +217,157 @@ PetscCompGridVTO::createOpStencil(IntVect a_iv, int a_ilev,const DataIndex &a_di
     }
 }
 
+// clean out BC from stencil of cell a_iv
+void 
+PetscCompGridVTO::applyBCs( IntVect a_iv, int a_ilev, const DataIndex &di_dummy, Box a_dombox, 
+                            StencilTensor &a_sten )
+{
+  CH_TIME("PetscCompGridVTO::applyBCs");
+  Vector<Vector<StencilNode> > new_vals; // StencilTensorValue
+  
+  RefCountedPtr<BCFunction> bc = m_bc.getBCFunction();
+  CompGridVTOBC *mybc = dynamic_cast<CompGridVTOBC*>(&(*bc));
+  
+  // count degrees, add to 'corners'
+  Vector<IntVectSet> corners(CH_SPACEDIM);
+  StencilTensor::const_iterator end2 = a_sten.end(); 
+  for (StencilTensor::const_iterator it = a_sten.begin(); it != end2; ++it) 
+    {
+      const IntVect &jiv = it->first.iv();
+      if (!a_dombox.contains(jiv) && it->first.level()==a_ilev) // a BC
+        {
+          int degree = CH_SPACEDIM-1;
+          for (int dir=0;dir<CH_SPACEDIM;++dir)
+            {
+              if (jiv[dir] >= a_dombox.smallEnd(dir) && jiv[dir] <= a_dombox.bigEnd(dir)) degree--;
+            }
+          CH_assert(degree>=0);
+          corners[degree] |= jiv;
+        }
+    }
+  // move ghosts starting at with high degree corners and cascade to lower degree
+  for (int ideg=CH_SPACEDIM-1;ideg>=0;ideg--)
+    {
+      // iterate through list
+      for (IVSIterator ivit(corners[ideg]); ivit.ok(); ++ivit)
+        {
+          const IntVect &jiv = ivit(); // get rid of this bc ghost
+          // get layer of ghost
+          Box gbox(IntVect::Zero,IntVect::Zero); gbox.shift(jiv);
+          Box inter = a_dombox & gbox;    CH_assert(inter.numPts()==0);
+          int igid = -1; // find which layer of ghost I am
+          do{
+            igid++;
+            gbox.grow(1);
+            inter = a_dombox & gbox;
+          }while (inter.numPts()==0);
+	  if (igid!=0) MayDay::Error("PetscCompGridVTO::applyBCs layer???");
+          for (int dir=0;dir<CH_SPACEDIM;++dir)
+            {
+              if (jiv[dir] < a_dombox.smallEnd(dir) || jiv[dir] > a_dombox.bigEnd(dir))
+		{ // have a BC, get coefs on demand
+		  int iside = 1; // hi
+		  int isign = 1;
+                  if (jiv[dir] < a_dombox.smallEnd(dir)) isign = -1;
+		  if (jiv[dir] < a_dombox.smallEnd(dir)) iside = 0; // lo
+		  if (!mybc) MayDay::Error("PetscCompGridVTO::applyBCs: wrong BC!!!!");
+		  new_vals.resize(1);
+		  new_vals[0].resize(1); 
+		  //new_vals[i][j].second.setValue(mybc->getCoef(j,i));
+                  for (int comp=0; comp<SpaceDim; comp++)
+                    {
+		      new_vals[0][0].second.define(1);
+                      if (mybc->m_bcDiri[dir][iside][comp]) new_vals[0][0].second.setValue(comp,comp,-1.); // simple diagonal 
+                      else new_vals[0][0].second.setValue(comp,comp,1.);
+                    } // end loop over components
+                  new_vals[0][0].first.setLevel(a_ilev);
+		  
+		  IndexML kill(jiv,a_ilev);
+		  IntVect biv = jiv;
+		  biv.shift(dir,-isign*(igid+1));                 
+		  new_vals[igid][0].first.setIV(biv);
+		  if (ideg>0 && !a_dombox.contains(biv)) // this could be a new stencil value for high order BCs
+		    {
+		      corners[ideg-1] |= biv; // send down to lower list for later removal
+		    }
+		  else CH_assert(a_dombox.contains(biv));
+		
+		  StencilProject(kill,new_vals[igid],a_sten);
+		  int nrm = a_sten.erase(kill); CH_assert(nrm==1);
+		  break;
+		} // BC
+	    } // spacedim
+	} // ghosts
+    } // degree
+}
+
+#endif // ifdef petsc
+
+// CompGridVTOBC
+void 
+CompGridVTOBC::createCoefs()
+{  
+  m_isDefined=true;
+  // is this needed ?
+  m_Rcoefs[0] = -1.;
+}
+
+// 
+void 
+CompGridVTOBC::operator()( FArrayBox&           a_state,
+			   const Box&           a_valid,
+			   const ProblemDomain& a_domain,
+			   Real                 a_dx,
+			   bool                 a_homogeneous)
+{
+  const Box& domainBox = a_domain.domainBox();
+  for (int idir = 0; idir < SpaceDim; idir++)
+    {
+      if (!a_domain.isPeriodic(idir))
+        {
+          for (SideIterator sit; sit.ok(); ++sit)
+            {
+              Side::LoHiSide side = sit();              
+              if (a_valid.sideEnd(side)[idir] == domainBox.sideEnd(side)[idir])
+                {
+                  // Dirichlet BC
+                  int isign = sign(side);
+                  Box toRegion = adjCellBox(a_valid, idir, side, 1);
+                  // include corner cells if possible by growing toRegion in transverse direction
+                  toRegion.grow(1);
+                  toRegion.grow(idir, -1);
+                  toRegion &= a_state.box();
+                  for (BoxIterator bit(toRegion); bit.ok(); ++bit)
+                    {
+                      IntVect ivTo = bit();                     
+                      IntVect ivClose = ivTo - isign*BASISV(idir);
+                      for (int ighost=0;ighost<m_nGhosts[0];ighost++,ivTo += isign*BASISV(idir))
+                        {
+                          //for (int icomp = 0; icomp < a_state.nComp(); icomp++) a_state(ivTo, icomp) = 0.0;
+                          IntVect ivFrom = ivClose;
+                          
+                          // hardwire to linear BCs for now
+                          for (int icomp = 0; icomp < a_state.nComp() ; icomp++)
+                            {
+                              if (m_bcDiri[idir][side][icomp]) 
+                                {
+                                  a_state(ivTo, icomp) = (-1.0)*a_state(ivFrom, icomp);
+                                }
+                              else 
+                                {
+                                  a_state(ivTo, icomp) = (1.0)*a_state(ivFrom, icomp);
+                                }
+                            }   
+                        }
+                    } // end loop over cells
+                } // if ends match
+            } // end loop over sides
+        } // if not periodic in this direction
+    } // end loop over directions    
+}
+
 #include "NamespaceFooter.H"
+
+#ifdef CH_USE_PETSC
 
 #endif

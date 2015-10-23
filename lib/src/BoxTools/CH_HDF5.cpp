@@ -617,6 +617,7 @@ HDF5Handle::HDF5Handle(
     sprintf(buf, "Problem opening file %s ",a_filename.c_str());
     MayDay::Error(buf);
   }
+  m_mode = a_mode;
 }
 
 HDF5Handle::~HDF5Handle()
@@ -644,6 +645,7 @@ int HDF5Handle::open(
       MayDay::Error("Calling 'open' on already open file.  use 'close' on finished files");
     }
 
+  m_mode = a_mode;
   m_filename = a_filename;
   if (!initialized) initialize();
   m_group    = "/";
@@ -794,7 +796,8 @@ int HDF5Handle::setGroup(const std::string& group)
   H5Eget_auto(&efunc, &edata);
   H5Eset_auto(NULL, NULL);
   m_currentGroupID = H5Gopen(m_fileID, group.c_str());
-  if (m_currentGroupID < 0)
+  // (DFM -- 6/9/15) -- don't try to create group if file is read-only
+  if ((m_mode != OPEN_RDONLY) && (m_currentGroupID < 0))
     {
       H5Eset_auto(efunc, edata); //turn error messaging back on.
       //open failed, go to group creation
@@ -808,7 +811,8 @@ int HDF5Handle::setGroup(const std::string& group)
   H5Eget_auto(H5E_DEFAULT,&efunc, &edata);
   H5Eset_auto2(H5E_DEFAULT, NULL, NULL);
   m_currentGroupID = H5Gopen2(m_fileID, group.c_str(), H5P_DEFAULT);
-  if (m_currentGroupID < 0)
+  // (DFM -- 6/9/15) -- don't try to create group if file is read-only
+  if ( (m_mode != OPEN_RDONLY) && (m_currentGroupID < 0))
     {
       H5Eset_auto2(H5E_DEFAULT, efunc, edata); //turn error messaging back on.
       //open failed, go to group creation

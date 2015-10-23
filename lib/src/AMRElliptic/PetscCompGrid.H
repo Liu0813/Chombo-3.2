@@ -10,13 +10,14 @@
 
 #ifndef _PETSCCOMPGRID_H_
 #define _PETSCCOMPGRID_H_
-#ifdef CH_USE_PETSC
 #include "Stencil.H"
 #include "BCFunc.H"
 #include "DisjointBoxLayout.H"
 #include "BoxIterator.H"
 #include "FourthOrderInterpStencil.H"
-#include <petsc-private/pcimpl.h>
+#ifdef CH_USE_PETSC
+#include <petsc.h>
+#endif
 #include "NamespaceHeader.H"
 
 typedef enum {GHOST=-1,FINE_COVERED=-2,DIRI_BC=-3,
@@ -28,7 +29,12 @@ std::ostream& operator<< (std::ostream& os, GID_type);
 //! This base class organizes the construction of a PETSc matrix, with an AMR hierarchy
 class PetscCompGrid
 {
+
 public: 
+  //! Destructor.
+  virtual ~PetscCompGrid();
+
+#ifdef CH_USE_PETSC
 
   //! Base class constructor. Called by all subclass constructors.
   PetscCompGrid(int a_dof) : m_gid0(0),m_mat(0),m_Pmat(0),m_CFStencilRad(2),m_writeMatlab(false),
@@ -49,8 +55,6 @@ public:
                        const RealVect &a_cdx,
                        int a_numLevels=-1, int a_ibase=0);
   
-  //! Destructor.
-  virtual ~PetscCompGrid();
   virtual void clean();
 
   Mat getMatrix() const { return m_mat; }
@@ -78,15 +82,16 @@ protected:
   // at end add stencil to matrix - done
   PetscErrorCode AddStencilToMat(IntVect,int,const DataIndex&,StencilTensor &, Mat);
   // utils
-  void NodeDefine(StenScalarNode &a_node, IntVect a_iv, int a_lev, Real a_val)
+  void NodeDefine(StencilNode &a_node, IntVect a_iv, int a_lev, Real a_val)
   {
     a_node.first.setIV(a_iv);
     a_node.first.setLevel(a_lev);
-    a_node.second.setValue(a_val);
+    a_node.second.define(1);
+    a_node.second.setValue(a_val); // this sets diagonal
   }
   void setCFCoverMaps(int a_nlev);
   void setCoverMaps(int a_nlev);
-  PetscErrorCode permuteDataAndMaps(Vector<StencilScalar> &patchStencil);
+  PetscErrorCode permuteDataAndMaps(Vector<StencilTensor> &patchStencil);
   // data
   Vector<ProblemDomain> m_domains;
   Vector<DisjointBoxLayout> m_grids;
@@ -133,13 +138,16 @@ private:
   {
     MayDay::Error("invalid operator");
   }
+#endif // ifdef petsc
+
 };
 
 class CompBC : public BCFunction
 {
 public:
+  CompBC() {;}
   CompBC(int a_nSource, IntVect a_nGhosts);
-  ~CompBC();
+  virtual ~CompBC();
   void define(int a_nSource, IntVect a_nGhosts);
 
   virtual void createCoefs() = 0;
@@ -148,15 +156,34 @@ public:
                            const ProblemDomain& a_domain,
                            Real                 a_dx,
                            bool                 a_homogeneous) = 0;
+
+  virtual void operator()( FArrayBox&           a_state,
+                           const Box&           a_valid,
+                           const ProblemDomain& a_domain,
+                           Real                 a_dx,
+                           const DataIndex&     a_index,
+                           bool                 a_homogeneous) 
+  {
+    operator()(a_state, a_valid, a_domain, a_dx, a_homogeneous);
+  }
  
   IntVect nGhosts()const{return m_nGhosts;}
   int nSources()const{return m_nSources;}
+#ifdef CH_USE_PETSC
   PetscReal getCoef(int a_iSrc, int a_iGhost=0);
+#else
+  Real getCoef(int a_iSrc, int a_iGhost=0);
+#endif
 protected:
+#ifdef CH_USE_PETSC
   PetscReal *m_Rcoefs;
+#else
+  Vector<Real> m_Rcoefs;
+#endif
   IntVect    m_nGhosts;
   int        m_nSources; // degreee is m_nSources-1
   bool       m_isDefined;
+
 };
 
 class ConstDiriBC : public CompBC
@@ -173,5 +200,4 @@ public:
 
 #include "NamespaceFooter.H"
 
-#endif
 #endif

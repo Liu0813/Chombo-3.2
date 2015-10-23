@@ -431,7 +431,7 @@ PetscErrorCode go(int nGrids, int &status)
   Vector<IntVectSet> tagVects(nGrids-1);
   Real cdx,dx;
   PetscCompGridPois petscop(0.,-1.,s_order);
-  RefCountedPtr<ConstDiriBC> bcfunc = RefCountedPtr<ConstDiriBC>(new ConstDiriBC(1,petscop.getGhostVect()));
+  RefCountedPtr<ConstDiriBC> bcfunc = RefCountedPtr<ConstDiriBC>(new ConstDiriBC(2,petscop.getGhostVect()));
   BCHolder bc(bcfunc);
   PetscFunctionBeginUser;
 
@@ -503,7 +503,11 @@ PetscErrorCode go(int nGrids, int &status)
         ierr = MatGetVecs(A,&x,&b); CHKERRQ(ierr);
         ierr = petscop.putChomboInPetsc(rhs2,b); CHKERRQ(ierr);
         ierr = KSPCreate(PETSC_COMM_WORLD, &ksp); CHKERRQ(ierr);
-        ierr = KSPSetOperators(ksp, A, A, DIFFERENT_NONZERO_PATTERN); CHKERRQ(ierr);
+#if PETSC_VERSION_GE(3,5,0)
+	ierr = KSPSetOperators(ksp, A, A); CHKERRQ(ierr);
+#else
+	ierr = KSPSetOperators(ksp, A, A, DIFFERENT_NONZERO_PATTERN); CHKERRQ(ierr);
+#endif
         ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
         ierr = KSPSolve(ksp, b, x); CHKERRQ(ierr);
         ierr = KSPDestroy(&ksp); CHKERRQ(ierr); 

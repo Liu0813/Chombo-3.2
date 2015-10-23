@@ -478,13 +478,22 @@ void AMRNavierStokes::defineViscousMGSolver(const DisjointBoxLayout& a_grids,
                                       alpha, s_scal_coeffs[comp]);
         }
     }
+  
+  // AMRLevelNavierStokes owns m_bottom solver
+  // to avoid a memory leak. 
+  
+  //First clean up previous bottom solver
+  if(m_bottomSolver != NULL) {
+    
+    delete m_bottomSolver;
+    m_bottomSolver = NULL;
+  }
+  
+  RelaxSolver<LevelData<FArrayBox> >* newBottomSolverPtr = new RelaxSolver<LevelData<FArrayBox> >; //Kris R.
 
-  // You really need to delete this when you're done with the solvers.
-  // But m_bottomSolver is a protected field of AMRMultiGrid.
-  RelaxSolver<LevelData<FArrayBox> >* bottomSolverPtr = new
-    RelaxSolver<LevelData<FArrayBox> >;
-  bottomSolverPtr->m_verbosity = s_verbosity;
-
+  newBottomSolverPtr->m_verbosity = s_verbosity;
+  m_bottomSolver = newBottomSolverPtr;
+  
   for (int idir = 0; idir < SpaceDim; idir++)
     {
       m_velMGsolverPtrs[idir] =
@@ -492,7 +501,7 @@ void AMRNavierStokes::defineViscousMGSolver(const DisjointBoxLayout& a_grids,
         (new AMRMultiGrid<LevelData<FArrayBox> >() );
       m_velMGsolverPtrs[idir]->define(baseDomain, // on either this level or coarser level
                                       *velTGAOpFactoryPtrs[idir],
-                                      bottomSolverPtr,
+                                      m_bottomSolver, 
                                       numSolverLevels);
       m_velMGsolverPtrs[idir]->m_verbosity = s_verbosity;
       m_velMGsolverPtrs[idir]->m_eps = s_viscous_solver_tol;
@@ -515,7 +524,7 @@ void AMRNavierStokes::defineViscousMGSolver(const DisjointBoxLayout& a_grids,
             (new AMRMultiGrid<LevelData<FArrayBox> >() );
           m_scalMGsolverPtrs[comp]->define(baseDomain, // on either this level or coarser level
                                            *scalTGAOpFactoryPtrs[comp],
-                                           bottomSolverPtr,
+                                           m_bottomSolver,
                                            numSolverLevels);
           m_scalMGsolverPtrs[comp]->m_verbosity = s_verbosity;
           m_scalMGsolverPtrs[comp]->m_eps = s_viscous_solver_tol;

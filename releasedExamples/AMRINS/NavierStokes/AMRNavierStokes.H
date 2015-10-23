@@ -615,6 +615,9 @@ protected:
   /// levelsolver for advectDiffuseScalar solves
   Vector< RefCountedPtr< AMRMultiGrid<LevelData<FArrayBox> > > > m_scalMGsolverPtrs;
 
+  ///Bottom Solver for level MG solver. Need to hang onto this so that we can delete it later to avoid leaking memory.
+  LinearSolver<LevelData<FArrayBox> >* m_bottomSolver;
+
   /// TGA solver for computeUstar():  LevelTGA has no default constructor
   Tuple< RefCountedPtr<LevelTGA>, SpaceDim> m_TGAsolverPtrs;
 
@@ -627,8 +630,9 @@ protected:
   /// Velocity advection
   PatchGodunov m_patchGodVelocity;
 
-  /// More scalar advection
-  Vector<PatchGodunov*> m_patchGodScalars;
+  /// More scalar advection 
+  // Kris R. -- Changed this to a RefCountedPtr to be safe.
+  Vector<RefCountedPtr<PatchGodunov> > m_patchGodScalars;
 
   /// refinement threshold for regridding
   Real m_refine_threshold;
@@ -644,6 +648,15 @@ protected:
 
   /// physical BC object
   PhysBCUtil* m_physBCPtr;
+
+  /// velocity IBC object, need to own this to avoid a memory leak 
+  PhysIBC* m_velocityIBC;
+
+  /// lambda IBC object, need to own this to avoid a memory leak
+  PhysIBC* m_lambdaIBC;
+
+  ///scalar IBC object, need to own this to avoid a memory leak
+  Vector<PhysIBC*> m_scalarIBC;
 };
 
 #endif

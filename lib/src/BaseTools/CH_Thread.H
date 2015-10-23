@@ -8,14 +8,17 @@
  */
 #endif
 
+#ifndef _CH_Thread_H_
+#define _CH_Thread_H_
+
+#include "BaseNamespaceHeader.H"
+
 #ifdef _OPENMP
 #include <omp.h>
 #endif
 
-#ifndef _CH_Thread_H_
-#define _CH_Thread_H_
-
 extern bool onThread0();
 
+#include "BaseNamespaceFooter.H"
 
 #endif

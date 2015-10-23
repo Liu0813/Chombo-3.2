@@ -386,8 +386,15 @@ AMRNavierStokes::levelSetup(const DisjointBoxLayout& a_grids)
   advectionPhysicsLambda.define(m_problem_domain,m_dx);
   advectionPhysicsLambda.setNComp(1);
 
-  PhysIBC* lambdaIBC = m_physBCPtr->lambdaTraceIBC();
-  advectionPhysicsLambda.setPhysIBC(lambdaIBC);
+  //Make sure we delete the previous IBC to avoid a memory leak
+  if(m_lambdaIBC != NULL) {
+
+     delete m_lambdaIBC;
+     m_lambdaIBC=NULL;
+  }
+
+  m_lambdaIBC = m_physBCPtr->lambdaTraceIBC(); 
+  advectionPhysicsLambda.setPhysIBC(m_lambdaIBC);
 
   m_patchGodLambda.define(m_problem_domain,
                           m_dx,
@@ -406,8 +413,15 @@ AMRNavierStokes::levelSetup(const DisjointBoxLayout& a_grids)
   advectionPhysicsVelocity.define(m_problem_domain,m_dx);
   advectionPhysicsVelocity.setNComp(SpaceDim);
 
-  PhysIBC* velocityIBC = m_physBCPtr->advectionVelIBC();
-  advectionPhysicsVelocity.setPhysIBC(velocityIBC);
+  //Make sure we delete the previous IBC to avoid a memory leak 
+  if(m_velocityIBC != NULL) {
+
+     delete m_velocityIBC;
+     m_velocityIBC = NULL;
+  }
+
+  m_velocityIBC = m_physBCPtr->advectionVelIBC();
+  advectionPhysicsVelocity.setPhysIBC(m_velocityIBC);
 
   m_patchGodVelocity.define(m_problem_domain,
                             m_dx,
@@ -422,6 +436,18 @@ AMRNavierStokes::levelSetup(const DisjointBoxLayout& a_grids)
 
   // Define objects for the advection of the scalars
 
+  //Make sure we delete the previous IBCs to avoid a memory leak
+  for(int comp=0; comp < m_scalarIBC.size(); comp++) {
+
+     if(m_scalarIBC[comp] != NULL) {
+
+        delete m_scalarIBC[comp];
+        m_scalarIBC[comp] = NULL;
+     }
+  }
+
+  m_scalarIBC.resize(s_num_scal_comps); 
+
   m_patchGodScalars.resize(s_num_scal_comps);
 
   for (int comp = 0; comp < s_num_scal_comps; comp++)
@@ -431,10 +457,10 @@ AMRNavierStokes::levelSetup(const DisjointBoxLayout& a_grids)
     advectionPhysicsScalars.define(m_problem_domain,m_dx);
     advectionPhysicsScalars.setNComp(s_compsPerScalar);
 
-    PhysIBC* scalarIBC = m_physBCPtr->scalarTraceIBC(comp);
-    advectionPhysicsScalars.setPhysIBC(scalarIBC);
+    m_scalarIBC[comp] = m_physBCPtr->scalarTraceIBC(comp); 
+    advectionPhysicsScalars.setPhysIBC(m_scalarIBC[comp]); 
 
-    m_patchGodScalars[comp] = new PatchGodunov;
+    m_patchGodScalars[comp] = RefCountedPtr<PatchGodunov>(new PatchGodunov()); 
     m_patchGodScalars[comp]->define(m_problem_domain,
                                     m_dx,
                                     &advectionPhysicsScalars,

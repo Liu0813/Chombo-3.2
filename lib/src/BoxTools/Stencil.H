@@ -15,7 +15,7 @@
 #include <map>
 
 //
-// Classes general stencil object.  Classes StencilTensor and StencilScalar are the classes defined 
+// Classes general stencil object.  Classes StencilTensor are the classes defined 
 // here along with helper classes for stencil nodes and for multilevel, multi-block indices (IndexML)
 //
  
@@ -86,17 +86,19 @@ public:
     for (int i=0;i<m_dof*m_dof;i++) m_val[i] = p.m_val[i];
     return *this;
   }
-  Real value(int a_idof=0, int a_jdof=0) const {CHECK_DOF; return m_val[a_idof*m_dof + a_jdof];}
+  Real value(int a_idof, int a_jdof) const {CHECK_DOF; return m_val[a_idof*m_dof + a_jdof];}
   const Real *getVals() const {CHECK_DOF; return m_val;}
   void addValue(int a_idof, int a_jdof, Real a_val) { CHECK_DOF; m_val[a_idof*m_dof + a_jdof] += a_val; }
   void setValue(int a_idof, int a_jdof, Real a_val) { CHECK_DOF; m_val[a_idof*m_dof + a_jdof] = a_val; }
-  void addValue(Real a_val) { CHECK_DOF; m_val[0] += a_val; }
-  void setValue(Real a_val) { CHECK_DOF; m_val[0] = a_val; }
-  void axpy(Real a_alpha, StencilTensorValue &a_node) {
-    CHECK_DOF;
-    if (a_node.m_dof != m_dof) MayDay::Abort("StencilTensorValue::axpy DOF mismatch");
-    for (int i=0;i<m_dof*m_dof;i++) m_val[i] += a_alpha*a_node.m_val[i];
-  }
+  void apply(StencilTensorValue &a_scale, StencilTensorValue &a_node);
+  // scalar helpers, 
+  void addValue(Real a_val) { CHECK_DOF; for (int i=0;i<m_dof;i++) m_val[i*m_dof + i] += a_val; }
+  void setValue(Real a_val) { CHECK_DOF; for (int i=0;i<m_dof;i++) m_val[i*m_dof + i] = a_val; }
+  // void axpy(Real a_alpha, StencilTensorValue &a_node) {
+  //   CHECK_DOF;
+  //   if (a_node.m_dof != m_dof) MayDay::Abort("StencilTensorValue::axpy DOF mismatch");
+  //   for (int i=0;i<m_dof*m_dof;i++) m_val[i] += a_alpha*a_node.m_val[i];
+  // }
   void scale(Real a_alpha) { 
     CHECK_DOF; 
     for (int i=0;i<m_dof*m_dof;i++) m_val[i] *= a_alpha;
@@ -111,35 +113,36 @@ protected:
 
 //! \class StencilScalarValue
 //! a real array class
-class StencilScalarValue
-{
-public:
-  StencilScalarValue(int a_dof=-1) : m_val(0.)
-  {}
-  Real value() const {return m_val;}
-  void addValue(Real a_val) { m_val += a_val; }
-  void setValue(Real a_val) { m_val = a_val; }
-  void axpy(Real a_alpha, StencilScalarValue &a_node) {
-    MayDay::Abort("StencilScalarValue::axpy Used????");
-    m_val += a_alpha*a_node.m_val;
-  }
-  void scale(Real a_alpha) { m_val *= a_alpha; }
-  StencilScalarValue& operator= (const StencilScalarValue& p);
-  // Print the StencilScalarValue to given output stream in ASCII.
-  friend std::ostream& operator<< (std::ostream&       os,
-                                   const StencilScalarValue& iv);
-protected:
-  Real m_val;
-};
+// class StencilScalarValue
+// {
+// public:
+//   StencilScalarValue(int a_dof=-1) : m_val(0.)
+//   {}
+//   Real value() const {return m_val;}
+//   void addValue(Real a_val) { m_val += a_val; }
+//   void setValue(Real a_val) { m_val = a_val; }
+//   void axpy(Real a_alpha, StencilScalarValue &a_node) {
+//     MayDay::Abort("StencilScalarValue::axpy Used????");
+//     m_val += a_alpha*a_node.m_val;
+//   }
+//   void scale(Real a_alpha) { m_val *= a_alpha; }
+//   StencilScalarValue& operator= (const StencilScalarValue& p);
+//   // Print the StencilScalarValue to given output stream in ASCII.
+//   friend std::ostream& operator<< (std::ostream&       os,
+//                                    const StencilScalarValue& iv);
+// protected:
+//   Real m_val;
+// };
 
 typedef std::map<IndexML,StencilTensorValue > StencilTensor;
-typedef std::pair<IndexML,StencilScalarValue > StenScalarNode;
-typedef std::map<IndexML,StencilScalarValue > StencilScalar;
+// typedef std::pair<IndexML,StencilScalarValue > StenScalarNode;
+typedef std::pair<IndexML,StencilTensorValue > StencilNode;
+// typedef std::map<IndexML,StencilScalarValue > StencilScalar;
 
 // algebra
 
 // a_sten += a_new*a_sten[jiv]. "distributes" a_sten[jiv] with a_new. Would like to remove a_sten[jiv] but that messes up iterators.
-void StencilProject(IndexML jiv, Vector<StenScalarNode> &a_new, StencilTensor &a_sten);
+void StencilProject(IndexML jiv, Vector<StencilNode> &a_new, StencilTensor &a_sten);
 
 #include "NamespaceFooter.H"
 

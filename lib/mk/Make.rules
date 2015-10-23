@@ -474,8 +474,7 @@ o/$(config)/%.o : %.F  d/$(config)/%.d
 	$(QUIET)$(FC) $(FFLAGS) $(XTRAFFLAGS) $(fcompflag) f/$(config)/$*.f $(fobjflag)$@
 
 o/$(config)/%.o : %.F90  d/$(config)/%.d
-	$(QUIET)$(CSHELLCMD) "$(CH_CPP) $(CPPFLAGS) $(XTRACPPFLAGS) $(fcppflags) -DCH_LANG_FORT $< | $(fortpost) | awk 'NF>0' > f/$(config)/$*.f90"
-	$(QUIET)$(FC) $(FFLAGS) $(XTRAF90FLAGS) $(fcompflag) f/$(config)/$*.f90 $(fobjflag)$@
+	$(QUIET)$(FC) $(FFLAGS) $(XTRAF90FLAGS) $(fcompflag) $< $(fobjflag)$@
 
 o/$(config)/%.o : %.f  d/$(config)/%.d
 	$(QUIET)$(FC) $(FFLAGS) $(XTRAFFLAGS) $(fcompflag) $< $(fobjflag)$@

@@ -259,6 +259,51 @@ protected:
   RefCountedPtr<BCValueFunction> m_bc;
 };
 
+/// this BCFunction simply wraps a BCFunc
+class BCFuncWrapper: public BCFunction
+{
+public:
+  BCFuncWrapper():m_funcptr(NULL) 
+  {
+  }
+
+  BCFuncWrapper(BCFunc funcptr):m_funcptr(funcptr)
+  {
+  }
+
+  ///
+  virtual ~BCFuncWrapper() 
+  {
+  }
+
+  /// simply calls through to bcFunc
+  virtual void operator()(FArrayBox&           a_state,
+                          const Box&           a_valid,
+                          const ProblemDomain& a_domain,
+                          Real                 a_dx,
+                          bool                 a_homogeneous)
+  {
+    CH_assert(m_funcptr != NULL);
+    m_funcptr(a_state, a_valid, a_domain, a_dx, a_homogeneous);
+  }
+    
+  //explictly allow copy and assignment operators
+  BCFuncWrapper(const BCFuncWrapper& src):m_funcptr(src.m_funcptr)
+  {
+  }
+
+  virtual BCFuncWrapper& operator=(const BCFuncWrapper& src)
+  {
+    m_funcptr = src.m_funcptr;
+    return *this;
+  }
+
+  protected:
+  BCFunc m_funcptr;
+
+};
+
+
 // Class used by ConstDiriNeumBC to define BCs which can be passed anywhere a
 // BCFunction/BCHolder is needed
 class ConstBCFunction: public BCFunction

@@ -447,6 +447,7 @@ private:
 
   hid_t         m_fileID;
   hid_t         m_currentGroupID;
+  mode          m_mode;
   bool          m_isOpen;
   std::string   m_filename; // keep around for debugging
   std::string   m_group;

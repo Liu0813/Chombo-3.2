@@ -59,6 +59,8 @@
 
 ################################################################################
 
+makefiles+=Make.defs.hera
+
 # vars affecting the configuration string
 DIM=2
 DEBUG=TRUE

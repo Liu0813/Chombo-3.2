@@ -31,7 +31,7 @@ using std::cerr;
 #include "AMRMultiGrid.H"
 #include "QuadCFInterp.H"
 #include "PhysBCUtil.H"
-
+#include "RelaxSolver.H" 
 #include "FluxBox.H"
 
 #include "UsingNamespace.H"
@@ -339,6 +339,7 @@ protected:
       a_freestream solver is true if solver will be used for
       freestream preservation solve. */
   void defineMultiGrid(AMRMultiGrid<LevelData<FArrayBox> >& a_solver,
+                       LinearSolver<LevelData<FArrayBox> >* a_bottomSolver, 
                        const Vector<LevelData<FArrayBox>* >& a_vel,
                        bool a_freestreamSolver);
 
@@ -443,6 +444,9 @@ private:
 
   /// is this the finest extant level?
   bool m_finest_level;
+
+  ///bottom solver for level solves
+  RelaxSolver<LevelData<FArrayBox> > * m_bottomSolverLevel;
 
   ///
   PhysBCUtil* m_physBCPtr;

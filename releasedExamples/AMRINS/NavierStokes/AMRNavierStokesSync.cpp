@@ -101,26 +101,60 @@ AMRNavierStokes::postTimeStep()
           CH_assert(thisNSPtr->finestLevel());
           finest_level = thisNSPtr->m_level;
 
+          // amr grid info for solvers
+          Vector<DisjointBoxLayout> AmrGrids(finest_level+1);
+          Vector<int> AmrRefRatios(finest_level+1);
+          Vector<Real> AmrDx(finest_level+1);
+          ProblemDomain baseDomain;
+
+
+          // loop over levels, set up for AMRMultiGrid solve
+          thisNSPtr = this;
+          int startLev=m_level;
+          // if crser level exists, define it as well for BC's
+          if (startLev > 0)
+            {
+              startLev = startLev-1;
+              thisNSPtr = thisNSPtr->crseNSPtr();
+            }
+          AMRNavierStokes* startLevelPtr = thisNSPtr;
+
+          // (DFM 4/22/15) -- PoissonOpFactory needs grids for all levels
+          // so do coarser levels first
+          if (startLev > 0)
+            {
+              AMRNavierStokes* crseLevPtr = thisNSPtr->crseNSPtr();                 
+              for (int lev=startLev-1; lev>=0; lev--)
+                {
+                  const DisjointBoxLayout& levelGrids = crseLevPtr->newVel().getBoxes(); 
+                  AmrGrids[lev] = levelGrids;
+                  if (lev == 0) baseDomain = crseLevPtr->problemDomain();
+                  AmrRefRatios[lev] = crseLevPtr->refRatio();
+                  AmrDx[lev] = crseLevPtr->Dx();
+                  if (lev >0) crseLevPtr = crseLevPtr->crseNSPtr();
+                }
+            } // end if coarser levels exist
+          
+          
+          for (int lev=startLev; lev<=finest_level; lev++)
+            {
+              const DisjointBoxLayout& levelGrids = thisNSPtr->newVel().getBoxes();
+              AmrGrids[lev] = levelGrids;
+              AmrRefRatios[lev] = thisNSPtr->refRatio();
+              AmrDx[lev] = thisNSPtr->Dx();
+              if (lev == 0) baseDomain = thisNSPtr->problemDomain();
+              
+              thisNSPtr = thisNSPtr->finerNSPtr();
+            } // end loop over levels involved in the solve
+          
+          
           // first, do implicit refluxing for scalars
           if (s_implicit_scal_reflux && s_reflux_scal)
             {
               Vector<LevelData<FArrayBox>* > scalRefluxCorr(finest_level+1,NULL);
               Vector<LevelData<FArrayBox>* > scalRefluxRHS(finest_level+1,NULL);
-              Vector<DisjointBoxLayout> AmrGrids(finest_level+1);
-              Vector<int> AmrRefRatios(finest_level+1);
-              Vector<Real> AmrDx(finest_level+1);
-              Vector<ProblemDomain> AmrDomains(finest_level+1);
 
-              // loop over levels, allocate storage, set up for AMRMultiGrid
-              // solve
-              thisNSPtr = this;
-              int startLev=m_level;
-              // if crser level exists, define it as well for BC's
-              if (startLev > 0)
-                {
-                  startLev = startLev-1;
-                  thisNSPtr = thisNSPtr->crseNSPtr();
-                }
+              thisNSPtr = startLevelPtr;
               for (int lev=startLev; lev<=finest_level; lev++)
                 {
                   const DisjointBoxLayout& levelGrids = thisNSPtr->newVel().getBoxes();
@@ -131,11 +165,6 @@ AMRNavierStokes::postTimeStep()
                   IntVect ghostVect(D_DECL(1,1,1));
                   scalRefluxCorr[lev] = new LevelData<FArrayBox>(levelGrids,
                                                                  1,ghostVect);
-                  AmrGrids[lev] = levelGrids;
-                  AmrRefRatios[lev] = thisNSPtr->refRatio();
-                  AmrDx[lev] = thisNSPtr->Dx();
-                  AmrDomains[lev] = thisNSPtr->problemDomain();
-
                   // initialize corr, RHS to 0
                   DataIterator levelDit = scalRefluxRHS[lev]->dataIterator();
                   LevelData<FArrayBox>& levelRefluxRHS = *(scalRefluxRHS[lev]);
@@ -147,7 +176,7 @@ AMRNavierStokes::postTimeStep()
                     }
                   thisNSPtr = thisNSPtr->finerNSPtr();
                 }
-
+              
               Interval solverComps(0,0);
 
               // now do each scalar component
@@ -195,7 +224,7 @@ AMRNavierStokes::postTimeStep()
                       Real beta = -nuComp*m_dt;
 
                       AMRPoissonOpFactory diffusiveOpFactory;
-                      diffusiveOpFactory.define(AmrDomains[0],
+                      diffusiveOpFactory.define(baseDomain,
                                                 AmrGrids,
                                                 AmrRefRatios,
                                                 AmrDx[0],
@@ -208,7 +237,7 @@ AMRNavierStokes::postTimeStep()
 
                       AMRMultiGrid<LevelData<FArrayBox> > diffusionSolver;
                       AMRLevelOpFactory<LevelData<FArrayBox> >& castFact = ( AMRLevelOpFactory<LevelData<FArrayBox> >&) diffusiveOpFactory;
-                      diffusionSolver.define(AmrDomains[0],
+                      diffusionSolver.define(baseDomain,
                                              castFact,
                                              &bottomSolver,
                                              numLevels);
@@ -395,11 +424,6 @@ AMRNavierStokes::postTimeStep()
               // one component, levelfluxRegister::reflux can only
               // do all of them at once.
               Vector<LevelData<FArrayBox>* > tempRefluxData(finest_level+1,NULL);
-              Vector<DisjointBoxLayout> AmrGrids(finest_level+1);
-              Vector<int> AmrRefRatios(finest_level+1);
-              Vector<Real> AmrDx(finest_level+1);
-              Vector<ProblemDomain> AmrDomains(finest_level+1);
-
               // loop over levels, allocate storage, set up for AMRMultiGrid
               // solve
               thisNSPtr = this;
@@ -422,10 +446,6 @@ AMRNavierStokes::postTimeStep()
                   IntVect ghostVect(D_DECL(1,1,1));
                   refluxCorr[lev] = new LevelData<FArrayBox>(levelGrids,1,
                                                              ghostVect);
-                  AmrGrids[lev] = levelGrids;
-                  AmrRefRatios[lev] = thisNSPtr->refRatio();
-                  AmrDx[lev] = thisNSPtr->Dx();
-                  AmrDomains[lev] = thisNSPtr->problemDomain();
 
                   // initialize rhs to 0
                   DataIterator levelDit = tempRefluxData[lev]->dataIterator();
@@ -510,7 +530,7 @@ AMRNavierStokes::postTimeStep()
                   Real beta = -s_nu*m_dt;
 
                   AMRPoissonOpFactory viscousOpFactory;
-                  viscousOpFactory.define(AmrDomains[0],
+                  viscousOpFactory.define(baseDomain,
                                           AmrGrids,
                                           AmrRefRatios,
                                           AmrDx[0],
@@ -523,7 +543,7 @@ AMRNavierStokes::postTimeStep()
 
                   AMRMultiGrid<LevelData<FArrayBox> > viscousSolver;
                   AMRLevelOpFactory<LevelData<FArrayBox> >& viscCastFact = (AMRLevelOpFactory<LevelData<FArrayBox> >&) viscousOpFactory;
-                  viscousSolver.define(AmrDomains[0],
+                  viscousSolver.define(baseDomain,
                                        viscCastFact,
                                        &bottomSolver,
                                        numLevels);
