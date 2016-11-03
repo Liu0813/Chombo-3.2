@@ -150,22 +150,25 @@ int fabTest()
            << endl ;
     }
 #else
-  if (((ourfabs[0].max() > 0.0+eps)||
-      (ourfabs[0].max() < 0.0-eps)) ||
-     ((ourfabs[0].min() > 0.0+eps)||
-      (ourfabs[0].min() < 0.0-eps)))
-    {
-      pout() << indent << pgmname
-           << ": fab::initial calloc 1 might have failed"
-           << endl ;
-      icode = -2;
-    }
-  else if (verbose)
-    {
-      pout() << indent2 << pgmname
-           << ": fab::initial calloc 1 passed"
-           << endl ;
-    }
+  // (DFM -- 11/2/16: this bit of code checks that fabs are initialized to 
+  // zero if CH_USE_SETVAL isn't set. This is reasonable if we use calloc in 
+  // Arena.cpp, but since the switch to malloc, this is no longer reasonable.
+  // if (((ourfabs[0].max() > 0.0+eps)||
+  //     (ourfabs[0].max() < 0.0-eps)) ||
+  //    ((ourfabs[0].min() > 0.0+eps)||
+  //     (ourfabs[0].min() < 0.0-eps)))
+  //   {
+  //     pout() << indent << pgmname
+  //          << ": fab::initial calloc 1 might have failed"
+  //          << endl ;
+  //     icode = -2;
+  //   }
+  // else if (verbose)
+  //   {
+  //     pout() << indent2 << pgmname
+  //          << ": fab::initial calloc 1 passed"
+  //          << endl ;
+  //   }
 #endif
 
   oldInit = BaseFabRealSetVal;
@@ -190,22 +193,25 @@ int fabTest()
            << endl ;
     }
 #else
-  if (((ourfabs[1].max() > 0.0+eps)||
-      (ourfabs[1].max() < 0.0-eps)) ||
-     ((ourfabs[1].min() > 0.0+eps)||
-      (ourfabs[1].min() < 0.0-eps)))
-    {
-      pout() << indent << pgmname
-           << ": fab::initial calloc 2 might have failed"
-           << endl ;
-      icode = -4;
-    }
-  else if (verbose)
-    {
-      pout() << indent2 << pgmname
-           << ": fab::initial calloc 2 passed"
-           << endl ;
-    }
+  // (DFM -- 11/2/16: this bit of code checks that fabs are initialized to 
+  // zero if CH_USE_SETVAL isn't set. This is reasonable if we use calloc in 
+  // Arena.cpp, but since the switch to malloc, this is no longer reasonable.
+  // if (((ourfabs[1].max() > 0.0+eps)||
+  //     (ourfabs[1].max() < 0.0-eps)) ||
+  //    ((ourfabs[1].min() > 0.0+eps)||
+  //     (ourfabs[1].min() < 0.0-eps)))
+  //   {
+  //     pout() << indent << pgmname
+  //          << ": fab::initial calloc 2 might have failed"
+  //          << endl ;
+  //     icode = -4;
+  //   }
+  // else if (verbose)
+  //   {
+  //     pout() << indent2 << pgmname
+  //          << ": fab::initial calloc 2 passed"
+  //          << endl ;
+  //   }
 #endif
 
   BaseFabRealSetVal = oldInit;
