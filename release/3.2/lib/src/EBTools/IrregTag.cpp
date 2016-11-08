@@ -201,9 +201,9 @@ void IrregTag::read(HDF5Handle& a_handle)
   if (buffer == NULL)
     MayDay::Error("Memory allocation error in  IrregTags::read");
 
-  herr_t error = H5Dread(dataset, H5T_NATIVE_INT, memdataspace, dataspace,
+  herr_t readResult = H5Dread(dataset, H5T_NATIVE_INT, memdataspace, dataspace,
                          H5P_DEFAULT, buffer);
-  CH_assert(error >= 0);
+  CH_assert(readResult >= 0);
 
   H5Dclose(dataset);
   H5Sclose(dataspace);
