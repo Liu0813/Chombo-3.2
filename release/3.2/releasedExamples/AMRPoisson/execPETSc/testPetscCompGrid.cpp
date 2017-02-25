@@ -641,6 +641,22 @@ int main(int argc, char* argv[])
   PetscBool set;
   PetscInitialize(&argc,&argv,(char*)0,help);
 
+#if PETSC_VERSION_GE(3,7,0)
+  PetscOptionsGetInt(PETSC_NULL,PETSC_NULL,"-n",&s_nCells0,PETSC_NULL);
+  PetscOptionsGetBool(PETSC_NULL,PETSC_NULL,"-bc_debug",&s_debug,PETSC_NULL);
+  PetscOptionsGetBool(PETSC_NULL,PETSC_NULL,"-plot_fas",&s_amrfas,PETSC_NULL);
+  PetscOptionsGetBool(PETSC_NULL,PETSC_NULL,"-plot_mg",&s_amrmg,PETSC_NULL);
+  PetscOptionsGetBool(PETSC_NULL,PETSC_NULL,"-corner_stencil",&s_corner_stencil,PETSC_NULL);
+  PetscOptionsGetBool(PETSC_NULL,PETSC_NULL,"-matlab",&s_matlab,PETSC_NULL);
+  PetscOptionsGetBool(PETSC_NULL,PETSC_NULL,"-plot",&s_plot,PETSC_NULL);
+  PetscOptionsGetReal(PETSC_NULL,PETSC_NULL,"-error_thresh",&s_error_thresh,PETSC_NULL);
+  PetscOptionsGetInt(PETSC_NULL,PETSC_NULL,"-blocking_factor",&s_blockingfactor,PETSC_NULL);
+  PetscOptionsGetInt(PETSC_NULL,PETSC_NULL,"-order",&s_order,PETSC_NULL);
+  PetscOptionsGetInt(PETSC_NULL,PETSC_NULL,"-nesting",&s_nesting,PETSC_NULL);
+  PetscOptionsGetInt(PETSC_NULL,PETSC_NULL,"-max_box_size",&s_maxboxsz,PETSC_NULL);
+  PetscOptionsGetInt(PETSC_NULL,PETSC_NULL,"-refinement_ratio",&s_refRatio,PETSC_NULL);
+  PetscOptionsGetString(PETSC_NULL,PETSC_NULL,"-amr_type",string,64,&set);
+#else
   PetscOptionsGetInt(PETSC_NULL,"-n",&s_nCells0,PETSC_NULL);
   PetscOptionsGetBool(PETSC_NULL,"-bc_debug",&s_debug,PETSC_NULL);
   PetscOptionsGetBool(PETSC_NULL,"-plot_fas",&s_amrfas,PETSC_NULL);
@@ -655,11 +671,18 @@ int main(int argc, char* argv[])
   PetscOptionsGetInt(PETSC_NULL,"-max_box_size",&s_maxboxsz,PETSC_NULL);
   PetscOptionsGetInt(PETSC_NULL,"-refinement_ratio",&s_refRatio,PETSC_NULL);
   PetscOptionsGetString(PETSC_NULL,"-amr_type",string,64,&set);
+#endif
+  
   if (set && strcmp(string,"error")==0) s_amr_type_iserror = true;
   else s_amr_type_iserror = false;
 
   nlev = 4;
-  PetscOptionsGetInt(PETSC_NULL,"-nlevels",&nlev,PETSC_NULL);
+#if PETSC_VERSION_GE(3,7,0)
+  PetscOptionsGetInt(PETSC_NULL,PETSC_NULL,"-nlevels",&nlev,PETSC_NULL);
+#else
+  PetscOptionsGetInt(PETSC_NULL,"-nlevels",&nlev,PETSC_NULL);  
+#endif
+  
   ierr = go(nlev,status); CHKERRQ(ierr);
 
   CH_TIMER_REPORT();

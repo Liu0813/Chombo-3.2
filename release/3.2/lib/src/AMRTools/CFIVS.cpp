@@ -20,7 +20,7 @@
 #include "NamespaceHeader.H"
 
 //--Definitions for static member data
-
+//these only change in non-threaded world
 long long CFIVS::s_packCount = 0;
 long long CFIVS::s_sparseCount = 0;
 
@@ -138,6 +138,7 @@ CFIVS::setDefaultValues()
 void
 CFIVS::decrementCounts()
 {
+#ifndef _OPENMP
   if (m_defined && !m_empty)
     {
       if (m_packed)
@@ -151,6 +152,7 @@ CFIVS::decrementCounts()
     }
   CH_assert(s_packCount >= 0);
   CH_assert(s_sparseCount >= 0);
+#endif
 }
 
 /*--------------------------------------------------------------------*/
@@ -172,12 +174,16 @@ CFIVS::packIVS()
       m_packedBox = m_IVS.minBox();
       if (m_packedBox.numPts() == m_IVS.numPts())
         {
+#ifndef _OPENMP
           ++s_packCount;
+#endif
           m_packed = true;
         }
       else
         {
+#ifndef _OPENMP
           ++s_sparseCount;
+#endif
           m_packed = false;
         }
     }

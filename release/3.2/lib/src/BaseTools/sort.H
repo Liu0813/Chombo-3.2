@@ -20,7 +20,7 @@
 #include <fstream>
 #include <sstream>
 
-#include <tr1/memory>
+//#include <memory>
 #ifdef _GLIBCXX_PARALLEL
 #include <parallel/algorithm>
 #else
@@ -423,7 +423,7 @@ index_type* mws_v1( value_type *a_data,
       elem_top[i] = elem_tmp[2*i + 1];
     }
 
-    delete elem_tmp;
+    delete[] elem_tmp;
 
     MPI_Type_free(const_cast<MPI_Datatype*>(&mpi_value_type));
   }
@@ -747,7 +747,7 @@ index_type* mws_v2(value_type *a_data,
       elem_top[i] = elem_tmp[2*i + 1];
     }
 
-    delete elem_tmp;
+    delete[] elem_tmp;
   }
 
   /* ********************************************************************** */
@@ -1787,9 +1787,9 @@ T* ParticleVector<T,Comparator>::memsort( T* a_data,
 
       int tt = loc_s_len;
       MPI_Buffer_detach( &bsend_buf, &tt ); // BSEND stuff
-      delete bsend_buf;
+      delete[] bsend_buf;
 
-      delete [] req;
+      delete[] req;
     }
 
   MPI_Type_free(const_cast<MPI_Datatype*>(&mpi_value_type));

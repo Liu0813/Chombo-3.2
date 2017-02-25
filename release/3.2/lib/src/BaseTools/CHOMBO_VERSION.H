@@ -21,7 +21,7 @@
 
 /** which patch of the release is this?
  */
-#define CHOMBO_PATCH_NUMBER 4
+#define CHOMBO_PATCH_NUMBER 5
 
 /**
    \mainpage Chombo: Block-Structured Adaptive Mesh Refinement Library

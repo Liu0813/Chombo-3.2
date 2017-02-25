@@ -659,9 +659,60 @@ int fabTest()
       icode = -16;
       return(icode);
     }
+  Box B4(loVect+2*IntVect::Unit, hiVect);
+
+  //==============stack allocation tests==========================
+  // intermix stack and heap FArrayBox's and aliasing with threading
+/*    this can wait for a future version after the C++11 commit
+  struct X{
+    static Real innerFunction(const FArrayBox& a_fab1, FArrayBox& a_fab2)
+    {
+      TEMPFAB(st1, a_fab1.box(), a_fab1.nComp());
+      a_fab2.setVal(3.5);
+      st1.copy(a_fab1);
+      return a_fab2.dotProduct(st1);
+    }
+  };
+  TEMPFAB(st1, B, 4*CH_SPACEDIM); //stack
+  FArrayBox st2(B4, 2*CH_SPACEDIM); //heap
+#pragma omp parallel for 
+  for(int i=0; i<4*CH_SPACEDIM; ++i)
+    {
+      FArrayBox st3(B4, 4, true); //stack
+      FArrayBox st2(Interval(i,i), st1); //alias a stack FArrayBox, hide heap
+      X::innerFunction(st2, st2);
+    }
+  FArrayBox sst2(B4, 16*CH_SPACEDIM, true); //stack
+  FArrayBox sst4(B4, 16*CH_SPACEDIM); //heap
+  Real d1=0;
+  Real d2=0;
+  for(int i=0; i<16*CH_SPACEDIM; ++i)
+    {
+      sst4.setVal(4*1,i);
+      d1+=3.5*4*i*B4.numPts();
+      d2+=i*4*i*B4.numPts();
+    }
+  Real dprod1=0;
+  Real dprod2=0;
+#pragma omp parallel for reduction(+:dprod1) reduction(+:dprod2)
+  for(int i=0; i<8*CH_SPACEDIM; ++i)
+    {
+      FArrayBox st3(Interval(2*i,2*i+1), sst2); //alias of stack
+      st3.setVal(2*i,0); //alter stack values through alias and shifted variable
+      st3.setVal(2*i+1,1);
+      FArrayBox st4(Interval(2*i,2*i+1), sst4); //alias of heap
+      dprod1+=X::innerFunction(st4, st3); // two stack aliases.  
+      dprod2+=st3.dotProduct(st4);
+   
+    }
+ 
+  std::cout<<B4.numPts()<<std::endl;
+  std::cout<<dprod1-d1<<std::endl;
+  std::cout<<dprod2-d2<<std::endl;
+*/
 
   // ======linearization tests=====================================
-  Box B4(loVect+2*IntVect::Unit, hiVect);
+
   CH_assert(!B4.isEmpty());
 
   BaseFab<Real> intfab1(B, 2), intfab2(B, 3), intfab3(B4, 1);

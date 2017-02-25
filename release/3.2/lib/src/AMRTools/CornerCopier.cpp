@@ -14,7 +14,7 @@
 #include "MayDay.H"
 #include "LayoutIterator.H"
 #include "SPMD.H"
-
+#include "CH_Timer.H"
 #include <vector>
 #include "NamespaceHeader.H"
 
@@ -101,6 +101,7 @@ void CornerCopier::define(const BoxLayout& a_level,
                           const IntVect& a_ghost,
                           bool  a_exchange)
 {
+  CH_TIME("cornerCopier define");
   m_ghost = a_ghost;
   bool isSorted = (a_level.isSorted() && a_dest.isSorted());
   // if no ghost cells, warn and return

@@ -19,6 +19,11 @@
 #ifdef CH_MPI
 #include <mpi.h>
 #endif
+
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 #include "UsingBaseNamespace.H"
 
 /// Prototypes:
@@ -39,9 +44,6 @@ static bool verbose = true ;
 int
 main(int argc, char* argv[])
 {
-  CH_TIMERS("mymain");
-  CH_TIMER("wholething", t1);
-  CH_START(t1);
 
 #ifdef CH_MPI
   MPI_Init(&argc, &argv);
@@ -57,11 +59,10 @@ main(int argc, char* argv[])
   ///
   int ret = testRCP() ;
 #ifdef CH_MPI
+  CH_TIMER_REPORT();
   MPI_Finalize();
 #endif
 
-  double timeForCode=0;
-  CH_STOPV(t1, timeForCode);
 
   return ret;
 }
@@ -170,6 +171,51 @@ testRCP()
       return_code = -1;
     }
 
+#ifdef _OPENMP
+
+  // OpenMP testing
+
+  RefCountedPtr<Bar> masterBar(new Bar);
+  RefCountedPtr<Foo> masterFoo(new Foo), masterFoo2;
+  pout()<< "....OpenMP Testing "<<endl;
+  int loopCount = 45+rand() % 100;
+#pragma omp parallel
+  {
+
+    RefCountedPtr<Bar> threadBar = masterBar;
+#pragma omp barrier
+    if(threadBar.refCount() != masterBar.refCount() ||  threadBar.refCount() != omp_get_num_threads()+1)
+      {
+        if (verbose)
+          {
+            pout()<< indent2 << "RefCountedPtr RefCount wrong inside parallel region "<<threadBar.refCount()
+                  <<" "<<masterBar.refCount()<<endl;
+          }
+        return_code = -1;
+      }
+#pragma omp barrier
+    RefCountedPtr<Bar> threadBar2(RefCountedPtr<Foo>(new Foo));
+    masterFoo = RefCountedPtr<Foo>(new Foo);
+ 
+    masterFoo2 = masterFoo;
+ #pragma omp for
+    for(int i=0; i<loopCount; ++i)
+      {
+        RefCountedPtr<Bar> subBar = masterFoo;
+        RefCountedPtr<Foo> subFoo = masterFoo2;
+        masterFoo = subFoo;
+      }
+  }
+  if(masterBar.refCount() != 1 ||  masterFoo.refCount() != 2)
+      {
+        if (verbose)
+          {
+            pout()<< indent2 << "RefCountedPtr RefCount wrong after parallel region"<<endl;
+          }
+        return_code = -1;
+      }
+  
+#endif   // end _OPENMP
 //
   if (return_code == 0)
   {

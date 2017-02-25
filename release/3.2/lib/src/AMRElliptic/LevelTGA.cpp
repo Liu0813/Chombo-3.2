@@ -117,12 +117,13 @@ LevelTGA::updateSoln(LevelData<FArrayBox>& a_phiNew,
   //the IntVect::Zero is important here.
   LevelData<FluxBox>   flux(m_grids[a_level], ncomp, IntVect::Zero);
 
+  bool rhsAlreadyKappaWeighted = false;
   BaseLevelTGA<LevelData<FArrayBox>, FluxBox, LevelFluxRegister>::updateSoln
     (a_phiNew, a_phiOld, a_src, flux,
      a_fineFluxRegPtr, a_crseFluxRegPtr,
      a_crsePhiOldPtr,  a_crsePhiNewPtr,
      a_oldTime, a_crseOldTime, a_crseNewTime, a_dt,
-     a_level, a_zeroPhi, a_fluxStartComponent);
+     a_level, a_zeroPhi, rhsAlreadyKappaWeighted, a_fluxStartComponent);
 }
 
 void
@@ -228,12 +229,13 @@ LevelBackwardEuler::updateSoln(LevelData<FArrayBox>& a_phiNew,
   //the IntVect::Zero is important here.
   LevelData<FluxBox>   flux(m_grids[a_level], ncomp, IntVect::Zero);
 
+  bool rhsAlreadyKappaWeighted = false;
   BaseLevelBackwardEuler<LevelData<FArrayBox>, FluxBox, LevelFluxRegister>::updateSoln
     (a_phiNew, a_phiOld, a_src, flux,
      a_fineFluxRegPtr, a_crseFluxRegPtr,
      a_crsePhiOldPtr,  a_crsePhiNewPtr,
      a_oldTime, a_crseOldTime, a_crseNewTime, a_dt,
-     a_level, a_zeroPhi, a_fluxStartComponent);
+     a_level, a_zeroPhi, rhsAlreadyKappaWeighted, a_fluxStartComponent);
 }
 
 #include "NamespaceFooter.H"

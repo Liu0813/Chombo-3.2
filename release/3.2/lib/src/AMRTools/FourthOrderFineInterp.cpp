@@ -87,6 +87,7 @@ void FourthOrderFineInterp::define(/// layout at this level
   // layers of ghost cells needed to interpolate to fine data,
   // which have m_coarseGhostsFill layers of ghost cells
   m_ghostVect = (m_coarseGhostsFill + m_maxStencilDist) * interpUnit;
+  m_ghostVect = 4*IntVect::Unit;
   // used only in interpToFine function
   m_coarseData.define(m_layoutCoarsened, m_numStates, m_ghostVect);
 

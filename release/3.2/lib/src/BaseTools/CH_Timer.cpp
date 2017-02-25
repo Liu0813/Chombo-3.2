@@ -71,6 +71,12 @@ double zeroTime = 0;
 unsigned long long int zeroTicks = 0;
 double secondspertick = 0;
 
+
+extern "C"{
+extern void FORTRAN_BASENAME(FLOPINIT,flopinit)();
+}
+
+
 void elem::buildList(List<elem>& tlist, const TraceTimer& timer)
 {
   tlist.append(elem(&timer, timer.time()));
@@ -221,6 +227,12 @@ int TraceTimer::initializer()
   if (initialized) return -11;
 
 #ifndef CH_NTIMER
+  // flop-counting breaks multidim
+
+  //FORTRAN_BASENAME(FLOPINIT,flopinit)() ;
+
+  CountersInit();
+
   const char* rootName = "main";
   TraceTimer* rootTimer = new TraceTimer(rootName, NULL, 0);
   rootTimer->m_thread_id = 0;
@@ -412,6 +424,10 @@ void TraceTimer::report(bool a_closeAfter)
 
   TraceTimer& root = *(s_roots[0]); // in MThread code, loop over roots
   root.currentize();
+  // flop-counting breaks multidim
+
+  root.m_flops=ch_flops();
+
   int numCounters = root.computeRank();
 
   double elapsedTime = TimerGetTimeStampWC() - zeroTime;
@@ -450,9 +466,16 @@ void TraceTimer::report(bool a_closeAfter)
       else
         {
           sprintf(buf,"time.table.%d",mpirank);
+          sprintf(buf+200,"stream.dat.%d", mpirank);
         }
 #else
       sprintf(buf,"time.table");
+      sprintf(buf+200,"stream.dat");
+#endif
+#ifdef CH_PAPI
+      std::fstream streamfile(buf+200, ios_base::out);
+      streamDump(streamfile);
+      streamfile.close();
 #endif
       static FILE* out = fopen(buf, "w");
       static int reportCount = 0;
@@ -568,16 +591,26 @@ void TraceTimer::subReport(FILE* out, const char* header, unsigned long long int
           unsigned long long int t = (*it).val->time();
           int rank = (*it).val->rank();
           subTime += t;
-          fprintf(out, "  %8.3f %8lld  %s [%d] \n", t*secondspertick, (*it).val->m_count, name, rank);
+
+          unsigned long long int f = (*it).val->m_flops;
+          double MFLOP=f/(t*secondspertick*1000000);
+          fprintf(out, "  %6.2f %8lld  %s [%d]", t*secondspertick, (*it).val->m_count, name, rank);
+          if(f>0)
+            fprintf(out, " f=%lld MFlop/s=%.0f\n", f, MFLOP);
+          else
+            fprintf(out,"\n");	  
+
         }
       }
     }
   if (subTime > 0)
-    fprintf(out, "  %8.3f   %4.1f%%    Total\n", subTime*secondspertick, (double)subTime/totalTime*100.0);
+    fprintf(out, "  %10.5f   %4.1f%%    Total\n", subTime*secondspertick, (double)subTime/totalTime*100.0);
 #ifdef _OPENMP
   }
 #endif
 }
+
+
 
 void TraceTimer::updateMemory(TraceTimer& a_timer)
 {
@@ -607,12 +640,12 @@ void TraceTimer::reportFullTree(FILE* out, const TraceTimer& timer,
   if (timer.m_pruned) return;
   unsigned long long int time = timer.m_accumulated_WCtime;
 
-  if (depth < 20)
-  {
-    for (int i=0; i<depth; ++i) fprintf(out,"   ");
-    double percent = ((double)time)/totalTime * 100.0;
-    fprintf(out, "[%d] %s %.4f %4.1f%% %lld \n", timer.m_rank, timer.m_name, time*secondspertick, percent, timer.m_count);
-  }
+  for (int i=0; i<depth; ++i) fprintf(out,"   ");
+  double percent = ((double)time)/totalTime * 100.0;
+
+  fprintf(out, "[%d] %s %.5f %4.1f%% %lld %lld %.0f MFlops \n", timer.m_rank, timer.m_name, time*secondspertick, 
+            percent, timer.m_count, timer.m_flops, timer.m_flops/(time*secondspertick*1000000));
+
   Vector<int> ordering;
   sorterHelper(timer.m_children, ordering);
   for (int i=0; i<timer.m_children.size(); ++i)
@@ -633,9 +666,17 @@ void TraceTimer::reportOneTree(FILE* out, const TraceTimer& timer)
   unsigned long long int time = timer.m_accumulated_WCtime;
   unsigned long long int subTime = 0;
 
+
+  unsigned long long int f=timer.m_flops;
+  double floatTime = time*secondspertick;
+  double MFLOP = f/(floatTime*1000000);
   fprintf(out,"---------------------------------------------------------\n");
 
-  fprintf(out,"[%d]%s %.2f %lld", timer.m_rank, timer.m_name, time*secondspertick, timer.m_count);
+  fprintf(out,"[%d]%s %.5f %lld", timer.m_rank, timer.m_name, floatTime, timer.m_count);
+  if(f>0)
+    fprintf(out, " f=%lld MFlop/s=%.0f", f, MFLOP);
+
+  
   if (s_memorySampling && timer.m_memoryMax > 0)
     {
       int t_min, t_max;
@@ -660,10 +701,16 @@ void TraceTimer::reportOneTree(FILE* out, const TraceTimer& timer)
           if (childtime > 0)
           {
             subTime += childtime;
+ 
+            floatTime = childtime*secondspertick;
+            //MFLOP = child.m_flops/(floatTime*1000000);
+
             double percent = ((double)childtime) / time * 100.0;
             if (!s_memorySampling || child.m_memoryMax == 0)
-              fprintf(out,"    %4.1f%% %7.2f %8lld %s [%d]\n",
-                      percent, childtime*secondspertick, child.m_count, child.m_name, child.m_rank);
+ 
+	      fprintf(out,"    %4.1f%% %10.5f %8lld %s [%d] f=%lld\n",
+                      percent, floatTime, child.m_count, child.m_name, child.m_rank, child.m_flops);	    
+
             else
               {
                 int t_min, t_max;
@@ -880,7 +927,7 @@ TraceTimer::TraceTimer(const char* a_name, TraceTimer* parent, int thread_id)
 TraceTimer::TraceTimer(const char* a_name, TraceTimer* parent, int thread_id)
   :m_pruned(false), m_parent(parent), m_name(a_name), m_count(0),
    m_accumulated_WCtime(0),m_last_WCtime_stamp(0), m_thread_id(thread_id),
-   m_memoryMin(0), m_memoryMax(0)
+   m_memoryMin(0), m_memoryMax(0),m_flops(0)
 {
   m_memoryMin--;  // roll it back to the largest possible value;
 }
@@ -917,6 +964,9 @@ void TraceTimer::start(char* mutex)
     MayDay::Error(buf);
   }
 # endif
+
+  m_flopEnter=ch_flops();
+
   ++m_count;
   *mutex = 1;
   s_currentTimer[m_thread_id] = this;
@@ -953,6 +1003,8 @@ unsigned long long int TraceTimer::stop(char* mutex)
 #endif
   unsigned long long int diff = ch_ticks();
   diff -= m_last_WCtime_stamp;
+
+  m_flops+=ch_flops()-m_flopEnter;
   if (diff > overflowLong) diff = 0;
   m_accumulated_WCtime += diff;
 

@@ -13,8 +13,8 @@
 
 #include "FArrayBox.H"
 #include "ProblemDomain.H"
-#include "FourthOrderInterpStencil.H"
 #include "IntVectSet.H"
+#include "FourthOrderInterpStencil.H"
 #include "UsingNamespace.H"
 
 /// Fourth-order interpolation in space on a single patch

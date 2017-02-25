@@ -14,7 +14,7 @@
 #include "FArrayBox.H"
 #include "IntVect.H"
 #include "Vector.H"
-#include "UsingNamespace.H"
+#include "NamespaceHeader.H"
 
 /// Class to manage coarse-to-fine spatial interpolation to all fine cells within a single particular coarse cell
 
@@ -100,18 +100,31 @@ protected:
 
   /// 0:(m_refineCoarse-1) in every dimension
   Box m_baseFineBox;
+
 public:
   /// number of coarse cells in the stencil
   int m_stencilSize;
 
-  /// length m_stencilSize*(SpaceDim-m_fixedDims.size()), lists indices of coarse cell corresponding to each component of m_coarseToFineFab
-  Vector<int> m_coarseBaseIndices;
+  /// length m_stencilSize, lists indices of coarse cell corresponding to each component of m_coarseToFineFab
+  Vector<IntVect> m_coarseBaseIndices;
 
   /// m_stencilSize coefficients of coarse cells for each cell in m_baseFineBox
   FArrayBox m_coarseToFineFab;
+
 protected:
+
   /// whether define() has been called
   bool m_defined;
+
+  Real power1d0avg(Real a_lower,
+                   Real a_upper,
+                   int a_ipwr) const;
+
+  Real power1dcoarseind0avg(int a_offset,
+                            int a_ipwr) const;
+
+  Real power1dfineind0avg(int a_offset,
+                          int a_ipwr) const;
 
 private:
 
@@ -128,4 +141,5 @@ private:
   }
 };
 
+#include "NamespaceFooter.H"
 #endif

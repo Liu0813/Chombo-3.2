@@ -11,6 +11,42 @@
 #ifndef _FORTRANNAMEMACRO_H_
 #define _FORTRANNAMEMACRO_H_
 
+#ifdef CH_FORT_UPPERCASE
+   #ifdef CH_FORT_UNDERSCORE
+      #define FORTRAN_BASENAME( NAME ,name ) NAME ## _
+      #ifdef CH_USE_DOUBLE
+         #define LAPACK(NAME, name) d ## NAME ## _
+      #else
+         #define LAPACK(NAME, name) s ## NAME ## _
+      #endif
+   #else
+      #define FORTRAN_BASENAME( NAME ,name ) NAME
+      #ifdef CH_USE_DOUBLE
+         #define LAPACK(NAME, name) d ## NAME
+      #else
+         #define LAPACK(NAME, name) s ## NAME
+      #endif
+   #endif
+#else
+   #ifdef CH_FORT_UNDERSCORE
+      #define FORTRAN_BASENAME( NAME ,name ) name ## _
+      #ifdef CH_USE_DOUBLE
+         #define LAPACK(NAME, name) d ## name ## _
+      #else
+         #define LAPACK(NAME, name) s ## name ## _
+      #endif
+   #else
+      #define FORTRAN_BASENAME( NAME ,name ) name
+      #ifdef CH_USE_DOUBLE
+         #define LAPACK(NAME, name) d ## name
+      #else
+         #define LAPACK(NAME, name) s ## name
+      #endif
+   #endif
+#endif
+
+
+
 #ifndef CH_MULTIDIM
       #ifdef CH_FORT_UPPERCASE
         #ifdef CH_FORT_UNDERSCORE

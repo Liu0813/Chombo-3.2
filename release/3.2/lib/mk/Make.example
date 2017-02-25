@@ -106,11 +106,11 @@ appcppflags := -I$(base_dir) $(addprefix -I,$(src_dirs))
 ##
 ## targets
 
-.PHONY: all example lib run vars usage
+.PHONY: all example lib run clean realclean vars usage
 
 usage:
 	@echo "This makefile supports targets:"
-	@echo "     all example lib example-only run $(ebase) vars usage"
+	@echo "     all example lib example-only run $(ebase) clean realclean vars usage"
 
 all example: all-example
 

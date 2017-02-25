@@ -168,7 +168,7 @@ testFineInterp()
                           ref_ratio,
                           fine_problem_domain);
 
-  CH_assert(interpolator.m_boundary_limit_type == FineInterp::noSlopeLimiting);
+  interpolator.m_boundary_limit_type = FineInterp::noSlopeLimiting;
   
   // set to PC interp at boundaries 
   // (this will cause test to fail at domain boundaries)

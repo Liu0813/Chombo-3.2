@@ -33,6 +33,14 @@ static const char* indent = "   ";
 static const char* indent2 = "      " ;
 static bool verbose = true ;
 
+
+static PetscErrorCode ksp_monitor_pout(KSP ksp, PetscInt it, PetscReal rnorm  ,void *ctx)
+{
+  pout() << "      KSP:: iteration = " << it << " residual norm = " <<  rnorm << std::endl;
+  return 0;
+}
+
+
 ///
 // Parse the standard test options (-v -q) out of the command line.
 ///
@@ -77,6 +85,15 @@ main(int argc ,char* argv[])
 #ifdef CH_USE_PETSC
   PetscErrorCode ierr;
   ierr = PetscInitialize(&argc, &argv,PETSC_NULL,PETSC_NULL); CHKERRQ(ierr);
+  // dump loaded PETSc options into pout
+  char *copts[1];
+#if PETSC_VERSION_GE(3,7,0)  
+  PetscOptionsGetAll(PETSC_NULL,copts);
+#else
+  PetscOptionsGetAll(copts);
+#endif
+  
+  pout() << copts[0] << "\n";
 #else
 #ifdef CH_MPI
   MPI_Init(&argc, &argv);
@@ -244,7 +261,9 @@ testPETScLinearLevelSolver()
         ierr = KSPSetTolerances(ksp,1.e-9,PETSC_DEFAULT,PETSC_DEFAULT,100); CHKERRQ(ierr); 
         if (verbose)
           {
-            ierr = KSPMonitorSet(ksp,KSPMonitorDefault,PETSC_NULL,PETSC_NULL); CHKERRQ(ierr); 
+            ierr = KSPMonitorSet(ksp,ksp_monitor_pout,PETSC_NULL,PETSC_NULL); CHKERRQ(ierr);
+            //ierr = KSPMonitorSet(ksp,KSPMonitorDefault,PETSC_NULL,PETSC_NULL); CHKERRQ(ierr);	    
+
           }
       }
 

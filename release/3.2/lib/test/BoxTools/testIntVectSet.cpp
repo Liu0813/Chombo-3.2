@@ -20,6 +20,7 @@ using std::endl;
 #include "TreeIntVectSet.H"
 #include "ProblemDomain.H"
 #include "MayDay.H"
+#include <set>
 #ifdef CH_MPI
 #include <mpi.h>
 #endif
@@ -1041,14 +1042,35 @@ testIntVectSet()
     TreeIntVectSet ivs3(ivs2);
 
     ivs2 &= ivs1;
+    int count=0;
     TreeIntVectSetIterator it(ivs3);
     for (it.begin(); it.ok(); ++it)
       {
+        count++;
         if (!ivs2.contains(it()))
         {
           MayDay::Error ("TreeIntVectSet::&= operator broken");
         }
       }
+
+    //  adding a test for using std::set and IntVect objects
+
+
+    std::set<IntVect> setIVS;
+    for (it.begin(); it.ok(); ++it)
+      {
+        setIVS.insert(it());
+      }
+    if(setIVS.size() != count)
+      MayDay::Error("std::set<IntVect> count is different than TreeIntVectSet");
+    for (it.begin(); it.ok(); ++it)
+      {
+        auto iv = setIVS.find(it());
+        if(!(iv != setIVS.end())) 
+          MayDay::Error("std::set<IntVect> missed some points");
+      }
+    
+
   }
   {
     /*   TreeIntVectSet ivs1;

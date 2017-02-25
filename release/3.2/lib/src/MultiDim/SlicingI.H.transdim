@@ -262,9 +262,9 @@ sliceDisjointBoxLayout(
     for( LayoutIt_T it(a_from.layoutIterator()); it.ok(); ++it )
     {
         toBoxT tobox;
-        bool isValid;
-        sliceBox( tobox, a_from[it()], a_slicespec,&isValid );
-        if(isValid)
+        bool isOutOfBounds;
+        sliceBox( tobox, a_from[it()], a_slicespec,&isOutOfBounds );
+        if(!isOutOfBounds)
         {
           boxes.push_back( tobox );
         }

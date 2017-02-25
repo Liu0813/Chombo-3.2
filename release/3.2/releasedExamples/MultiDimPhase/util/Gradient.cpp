@@ -364,7 +364,7 @@ Gradient::levelGradientCC(LevelData<FArrayBox>& a_grad,
     {
       for (int dir=0; dir<SpaceDim; dir++)
         {
-          FORT_GRADCC(CHF_FRA1(a_grad[dit],dir),
+          FORTNT_GRADCC(CHF_FRA1(a_grad[dit],dir),
                       CHF_CONST_FRA1(a_phi[dit],0),
                       CHF_BOX(grids[dit]),
                       CHF_CONST_REAL(a_dx),
@@ -546,7 +546,7 @@ Gradient::compGradientCC(LevelData<FArrayBox>& a_grad,
                       if (overlapBox.bigEnd(dir) >= thisGradBox.bigEnd(dir))
                         do_hi = 0;
 
-                      FORT_CRSEONESIDEGRAD(CHF_FRA1(thisGradDir,0),
+                      FORTNT_CRSEONESIDEGRAD(CHF_FRA1(thisGradDir,0),
                                            CHF_FIA1(thisMask,0),
                                            CHF_BOX(loEdgeBox),
                                            CHF_BOX(hiEdgeBox),
@@ -576,7 +576,20 @@ Gradient::compGradientCC(LevelData<FArrayBox>& a_grad,
   compGradientCC(a_grad,  a_phi, a_phiFinePtr, a_dx,
                  a_nRefFine, physdomain);
 }
-
+// ----------------------------------------------------------
+void
+Gradient::gradCC(FArrayBox& a_gradient,
+                     const FArrayBox& a_potential,
+                     const Box& a_box,
+                     Real a_dx,
+                     int  a_dir)
+{
+  FORT_GRADCC(CHF_FRA1(a_gradient,0),
+              CHF_CONST_FRA1(a_potential,0),
+              CHF_BOX(a_box),
+              CHF_CONST_REAL(a_dx),
+              CHF_INT(a_dir));
+}
 // ----------------------------------------------------------
 void
 Gradient::compGradientCC(LevelData<FArrayBox>& a_grad,
@@ -652,7 +665,7 @@ Gradient::compGradientCC(LevelData<FArrayBox>& a_grad,
                       if (overlapBox.bigEnd(dir) >= thisGradBox.bigEnd(dir))
                         do_hi = 0;
 
-                      FORT_CRSEONESIDEGRAD(CHF_FRA1(thisGradDir,0),
+                      FORTNT_CRSEONESIDEGRAD(CHF_FRA1(thisGradDir,0),
                                            CHF_FIA1(thisMask,0),
                                            CHF_BOX(loEdgeBox),
                                            CHF_BOX(hiEdgeBox),
@@ -718,7 +731,7 @@ Gradient::singleBoxMacGrad(FArrayBox& a_gradFab,
   for (int comp=a_gradComp; comp< a_gradComp+a_numComp; comp++)
     {
       // now compute gradient in direction dir on this grid
-      FORT_NEWMACGRAD(CHF_FRA1(a_gradFab,comp),
+      FORTNT_NEWMACGRAD(CHF_FRA1(a_gradFab,comp),
                       CHF_CONST_FRA1(a_phiFab,phiComp),
                       CHF_BOX(a_edgeBox),
                       CHF_CONST_REAL(a_dx),

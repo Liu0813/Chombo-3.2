@@ -21,7 +21,7 @@
 #include "NamespaceHeader.H"
 
 /// static variable initialization
-int FineInterp::s_default_boundary_limit_type = noSlopeLimiting;
+int FineInterp::s_default_boundary_limit_type = PCInterp;
 
 FineInterp::FineInterp()
   :
@@ -258,11 +258,10 @@ FineInterp::interpGridData(BaseFab<Real>& a_fine,
   //  Tuple<BaseFab<Real>, SpaceDim> slopes;
   //  for (int dir = 0; dir < SpaceDim; ++dir)
   // hardwired to 3 due to lack of variable number of arguments in chfpp
-  BaseFab<Real> slopes[3];
+  FArrayBox slopes[3] {{b,num_comp}, {b,num_comp}, {b,num_comp}};
   for (int dir = 0; dir < 3; ++dir)
     {
       BaseFab<Real>& dir_slope = slopes[dir];
-      dir_slope.resize(b, num_comp);
       // initialize to zero for PC-interp case
       dir_slope.setVal(0.0);
     }

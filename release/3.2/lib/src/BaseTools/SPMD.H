@@ -44,10 +44,10 @@ struct Chombo_MPI
 extern int num_procs ;
 #endif
 
-extern long long CH_MAX_MPI_MESSAGE_SIZE;
+extern unsigned long long CH_MAX_MPI_MESSAGE_SIZE;
 
-extern long long CH_MaxMPISendSize;
-extern long long CH_MaxMPIRecvSize;
+extern unsigned long long CH_MaxMPISendSize;
+extern unsigned long long CH_MaxMPIRecvSize;
 
 int reportMPIStats();
 
@@ -122,6 +122,18 @@ void gather(Vector<T>& a_outVec, const T& a_input, int a_dest);
   void linearOut<T>(void* a_outBuf, const T& inputT); \\ */
 template <class T>
 void broadcast(T& a_inAndOut,  int a_src);
+
+//u l l specialization of linearSize
+template < >
+int linearSize(const long long& a_input);
+
+//u l l specialization of linearIn
+template < >
+void linearIn(long long& a_outputT, const void* const inBuf);
+
+//unsigned long long specialization of linearOut
+template < >
+void linearOut(void* const a_outBuf, const long long& a_inputT);
 
 //integer specialization of linearSize
 template < >

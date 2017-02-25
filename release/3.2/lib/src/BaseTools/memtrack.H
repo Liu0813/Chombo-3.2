@@ -34,6 +34,7 @@ using std::ostream;
 
 #include "BaseNamespaceHeader.H"
 
+extern unsigned long long int ch_memcount;
 ///
 void dumpmemorymap(int a_sig);
 
@@ -102,6 +103,7 @@ public:
 
   static void overallMemoryUsage(long long& a_currentTotal,
                                  long long& a_peak);
+  static std::vector<void (*)()> s_memtrackAtExit;	
 };
 
 // =========== end user functions.===================================
