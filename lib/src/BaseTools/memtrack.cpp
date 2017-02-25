@@ -44,6 +44,10 @@ using std::string;
 
 #include "BaseNamespaceHeader.H"
 
+unsigned long long int ch_memcount=0;
+
+std::vector<void (*)()> Memtrack::s_memtrackAtExit(0);
+
 static const int    BYTES_PER_MEG      = 1024*1024;
 static const size_t CHUNK_FILENAME_LEN = 128;
 
@@ -63,13 +67,15 @@ void dumpmemorymap(int a_sig)
 void dumpmemoryatexit()
 {
   Pool::clearAllPools();
-  //Copier::s_motionItemPool.clear();
-  //IntVectSet::clearStaticMemory();
 
-  //#ifdef PTHREAD
-  //  ThreadTask::taskPool.clear();
-  //#endif
-
+  // call helper functions to clear memory using 
+  // that lives in Chombo namespaces.  This is a bit
+  // less elgant than we'd like but this lets us clear memory
+  // in mixed dimension Chombo and regular Chombo.
+  //for(int i=0; i<Memtrack::s_memtrackAtExit.size(); i++)
+  //{
+  //  Memtrack::s_memtrackAtExit[i]();
+  // }
   // this code was from my mad debugging of the static order
   // initialization bug in the memory tracking code that was
   // making the optimized code behave differently than the
@@ -90,11 +96,6 @@ void dumpmemoryatexit()
 
   UnfreedMemory();
 
-  // delete  Arena::arenaList_;
-  // delete  Pool::m_poolList_;
-  // delete  vectorList_;
-  // delete  vectorIncr_;
-  // delete  Arena::s_Arena;
 }
 
 void dumpmemoryabort(int sig)
@@ -628,7 +629,7 @@ void AddTrack(void*       a_addr,
   strncpy(info->file, a_fname, CHUNK_FILENAME_LEN-1);
   info->line  = a_lnum;
   info->mlloc = a_mlloc;
-
+  ch_memcount+=a_asize;
   allocList->insert(allocList->begin(), info);
 }
 
@@ -666,7 +667,7 @@ void RemoveTrack(void* a_addr,
             MayDay::Error("memory allocated with malloc-family returned using DELETE");
           }
         }
-
+	ch_memcount-=(*c)->size;
         // At least one compiler/OS/HDF5-version combination was
         // causing segfault in the memory-tracking (MT) code.
         // Normally, one might just turn off MT at compile-time via

@@ -40,6 +40,13 @@
 ##   HDFMPILIBFLAGS  link options (-L* -l*) for parallel HDF5 library files
 ##  USE_FFTW        if TRUE, use the FFTW library to build InfiniteDomain
 ##   FFTWDIR         path to parent directory of FFTW "include" and "lib" subdirs
+##  USE_PAPI        if TRUE, compile and link with the PAPI hardware counter system for CH_Timer
+##   PAPIINCFLAG     if USE_PAPI is TRUE then -DCH_PAPI is defined and this variable is added 
+##                     the compile command
+##   PAPILIBDIR      if USE_PAPI is TRUE then -lpapi is added to link command and this variable is 
+##                     expanded on the link line.  ie.  PAPILIBDIR=-L/Home/mydir/papi.5.4.3-install/lib
+##                   if PAPI is installed in system directories like /usr/local then you can ignore 
+##                   these two optional flags.
 ##  USE_MF          if TRUE, build Chombo MultiFluid code (implies USE_EB=TRUE)
 ##  USE_MT          if TRUE, enable Chombo memory tracking
 ##  USE_SETVAL      if TRUE, initialize all BaseFab<Real>s to special values
@@ -63,6 +70,8 @@
 ##  MULTIDIM        if true, will be compiling and linking with multiple dimensions
 
 ################################################################################
+makefiles+=Make.defs.defaults_in
+
 FAS?=TRUE
 # vars affecting the configuration string
 DIM?=2
@@ -76,9 +85,10 @@ GPU?=FALSE
 PIC?=FALSE
 OPENMPCC?=FALSE
 OPENMPFC?=FALSE
+USE_PAPI?=FALSE
 
-CXX?=g++
-FC?=gfortran
+#CXX?=g++
+FC?=gfortran#
 # Note: if MPI=TRUE, MPICXX is used to compile but CXX is used to
 #       determine the type of the base C++ compiler
 MPICXX?=mpiCC
@@ -107,6 +117,8 @@ HDFMPILIBFLAGS?=
 
 USE_PETSC?=FALSE 
 
+USE_LAPACK?=TRUE
+
 USE_FFTW?=FALSE#      #use FFTW library in $(FFTWDIR)/{include,lib}
 FFTWDIR?=
 
@@ -130,7 +142,7 @@ endif
 
 # these usually can be used without change
 CH_AR=ar r
-CH_CPP=$(CXX) -E -P
+CH_CPP?=cpp -E -P
 DOXYGEN?=doxygen
 # Note: if $(LD) is blank, $(CXX) or $(MPICXX) is used to link
 LD=
@@ -154,3 +166,5 @@ CUBIN?=cubin
 ifeq (0,$(shell test -e $(CHOMBO_HOME)/mk/Make.defs.defaults_ac; echo $$?))
 include $(CHOMBO_HOME)/mk/Make.defs.defaults_ac
 endif
+
+makefiles+=Make.defs.defaults_out

@@ -395,6 +395,13 @@ public:
                                int a_edgeDir,
                                const IntVectSet& a_gridIVS);
 
+  ///  C++ wrapper for FORT_GRADCC function
+  static void gradCC(FArrayBox& a_gradient,
+                     const FArrayBox& a_potential,
+                     const Box& a_box,
+                     Real a_dx,
+                     int  a_dir);
+
   /// create grid IVS for all grids
   /** creates an IVS representation of the DisjointBoxLayout
       in the neighborhood around each box in the DBL.

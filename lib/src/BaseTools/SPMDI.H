@@ -290,7 +290,7 @@ linearListSize(const Vector<T>& a_input)
   //next vecsize entries are offsets of data into buffer (int)
   //next vecsize entries are the actual data
   int itotsize = (a_input.size() + 1)*sizeof(int);
-  for (int ivec = 0; ivec < a_input.size(); ivec++)
+  for (unsigned int ivec = 0; ivec < a_input.size(); ivec++)
     {
       itotsize += linearSize(a_input[ivec]);
     }

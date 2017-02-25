@@ -655,7 +655,7 @@ bool EBLevelDataOps::checkNANINF(const LevelData<EBCellFAB>&a_data,
             {
               const VolIndex& vof = vofit();
               Real val = dataEBFAB(vof,icomp);
-              if (isnan(val) || isinf(val) || Abs(val)>1.e40)
+              if (std::isnan(val) || std::isinf(val) || Abs(val)>1.e40)
                 {
                   pout() << "      icomp = " << icomp << " vof = " << vof << " val = " << val << std::endl;
                   dataIsNANINF = true;

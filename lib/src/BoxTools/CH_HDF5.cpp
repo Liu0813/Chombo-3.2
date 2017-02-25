@@ -803,10 +803,21 @@ int HDF5Handle::setGroup(const std::string& group)
       //open failed, go to group creation
       m_currentGroupID = H5Gcreate(m_fileID, group.c_str(), 0);
     }
-  if (m_currentGroupID < 0)
-    ret = -1;
 
   H5Eset_auto(efunc, edata); //turn error messaging back on.
+  // DFM (11/14/15) -- if new group is invalid, put things back the 
+  // way they were and then return -1
+  if (m_currentGroupID < 0)
+    {
+      // open failed, return -1 and put things back the way they were
+      m_currentGroupID = H5Gopen(m_fileID, m_group.c_str());
+      ret = -1;
+    }
+  else
+    {
+      m_group = group;
+    }
+
 #else
   H5Eget_auto(H5E_DEFAULT,&efunc, &edata);
   H5Eset_auto2(H5E_DEFAULT, NULL, NULL);
@@ -819,12 +830,21 @@ int HDF5Handle::setGroup(const std::string& group)
       m_currentGroupID = H5Gcreate2(m_fileID, group.c_str(),H5P_DEFAULT, 
 				    H5P_DEFAULT,H5P_DEFAULT);
     }
-  if (m_currentGroupID < 0)
-    ret = -1;
-
   H5Eset_auto2(H5E_DEFAULT, efunc, edata); //turn error messaging back on.
+  // DFM (11/14/15) -- if new group is invalid, put things back the 
+  // way they were and then return -1
+  if (m_currentGroupID < 0)
+    {
+      // open failed, return -1 and put things back the way they were
+      m_currentGroupID = H5Gopen2(m_fileID, m_group.c_str(), H5P_DEFAULT);
+      ret = -1;
+    }
+  else
+    {
+      m_group = group;
+    }
 #endif
-  m_group = group;
+
   return ret;
 }
 

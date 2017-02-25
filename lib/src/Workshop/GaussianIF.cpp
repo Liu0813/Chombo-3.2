@@ -90,7 +90,7 @@ Real GaussianIF::value(const RealVect& a_point) const
       retval = -retval;
     }
 
-  CH_assert(!isnan(retval) && !isinf(retval));
+  CH_assert(!std::isnan(retval) && !std::isinf(retval));
 
   return retval;
 }

@@ -65,13 +65,10 @@ public:
   /*@}*/
 
   /**
-<<<<<<< VCAMRPoissonOp2.H
-=======
      \name MGLevelOp functions */
   /*@{*/
 
   /**
->>>>>>> 1.6
      calculate restricted residual
      a_resCoarse[2h] = I[h->2h] (rhsFine[h] - L[h](phiFine[h])
   */
@@ -154,6 +151,37 @@ public:
   /// Reciprocal of the diagonal entry of the operator matrix
   LevelData<FArrayBox> m_lambda;
 
+  // getFlux function which matches interface to AMRPoissonOp
+  /** assumes we want to use member-data bCoef, then calls 
+      second getFlux function */
+  virtual void getFlux(FluxBox&                    a_flux,
+                       const LevelData<FArrayBox>& a_data,
+                       const Box&                  a_grid,
+                       const DataIndex&            a_dit,
+                       Real                        a_scale)
+  {
+    const FluxBox& bCoef = (*m_bCoef)[a_dit];
+    getFlux(a_flux,a_data,bCoef,a_grid,a_dit,a_scale);
+  }
+
+  
+  virtual void getFlux(FluxBox&                    a_flux,
+                       const LevelData<FArrayBox>& a_data,
+                       const FluxBox&   a_bCoef,
+                       const Box&                  a_grid,
+                       const DataIndex&            a_dit,
+                       Real                        a_scale)
+  {
+    const FArrayBox& data = a_data[a_dit];
+    a_flux.define(a_grid, a_data.nComp());
+    for (int idir=0; idir<SpaceDim; idir++)
+      {
+        getFlux(a_flux[idir], data, a_bCoef, a_flux[idir].box(), idir, 1);
+        a_flux[idir] *= a_scale;
+      }
+    
+  }
+  
 protected:
   LayoutData<CFIVS> m_loCFIVS[SpaceDim];
   LayoutData<CFIVS> m_hiCFIVS[SpaceDim];

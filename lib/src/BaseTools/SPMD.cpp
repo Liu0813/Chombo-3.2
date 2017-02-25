@@ -23,9 +23,9 @@ using std::endl;
 
 // try a 30 Mbyte max message size and see if that helps.
 
-long long CH_MAX_MPI_MESSAGE_SIZE = 30*1024*1024;
-long long CH_MaxMPISendSize = 0;
-long long CH_MaxMPIRecvSize  = 0;
+unsigned long long CH_MAX_MPI_MESSAGE_SIZE = 30*1024*1024;
+unsigned long long CH_MaxMPISendSize = 0;
+unsigned long long CH_MaxMPIRecvSize  = 0;
 
 int reportMPIStats()
 {
@@ -181,6 +181,13 @@ void linearIn<int>(int& a_outputT, const void* const a_inBuf)
 }
 
 template < >
+void linearIn<long long>(long long& a_outputT, const void* const a_inBuf)
+{
+  long long* buffer = (long long*)a_inBuf;
+  a_outputT = *buffer;
+}
+
+template < >
 void linearIn<unsigned long long>(unsigned long long& a_outputT, const void* const a_inBuf)
 {
   unsigned long long* buffer = (unsigned long long*)a_inBuf;
@@ -191,6 +198,13 @@ template < >
 void linearOut<int>(void* const a_outBuf, const int& a_inputT)
 {
   int* buffer = (int*)a_outBuf;
+  *buffer = a_inputT;
+}
+
+template < >
+void linearOut<long long>(void* const a_outBuf, const long long& a_inputT)
+{
+  long long* buffer = (long long*)a_outBuf;
   *buffer = a_inputT;
 }
 
@@ -211,6 +225,12 @@ template < >
 int linearSize<unsigned long long>(const unsigned long long& a_input)
 {
   return sizeof(unsigned long long);
+}
+
+template < >
+int linearSize<long long>(const long long& a_input)
+{
+  return sizeof(long long);
 }
 
 template < >

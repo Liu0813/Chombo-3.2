@@ -326,7 +326,7 @@ Real maxNormOneComp(const LevelData<EBFluxFAB>& a_data,
         {
           const FaceIndex& face = faceit();
           const Real& val = dataFaceFAB(face, a_comp);
-          if (isnan(val) || isinf(val))
+          if (std::isnan(val) || std::isinf(val))
             {
 #ifdef CH_USE_HDF5
               char* fname = tempnam(NULL,NULL);

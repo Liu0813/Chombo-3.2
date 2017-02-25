@@ -1625,7 +1625,7 @@ bool EBAMRDataOps::checkNANINF(const Vector<LevelData<EBCellFAB>* >& a_data,
                 {
                   const VolIndex& vof = vofit();
                   Real val = dataEBFAB(vof,icomp);
-                  if (isnan(val) || isinf(val) || Abs(val)>1.e40)
+                  if (std::isnan(val) || std::isinf(val) || Abs(val)>1.e40)
                     {
                       pout() << "     ilev = " << ilev << " icomp = " << icomp << " vof = " << vof << " val = " << val << std::endl;
                       dataIsNANINF = true;
@@ -1703,7 +1703,7 @@ bool EBAMRDataOps::checkNANINF(const Vector<LevelData<EBFluxFAB>* >& a_data)
                   for (int icomp = 0; icomp < ncomp;++icomp)
                     {
                       Real val = dataFaceFAB(face,icomp);
-                      if (isnan(val) || isinf(val) || Abs(val)>1.e40)
+                      if (std::isnan(val) || std::isinf(val) || Abs(val)>1.e40)
                         {
                           pout() << "     ilev = " << ilev << " icomp = " << icomp << " face = " << face << " val = " << val << std::endl;
                           dataIsNANINF = true;

@@ -22,7 +22,13 @@ using std::ws;
 
 #include "NamespaceHeader.H"
 
+//shamelessly grabbed from RealVect
+IntVect tm_iv;
+#define CHOFFSETIV(object, member) (int)((char*)&(object.member) - (char*)&object)
+size_t IntVect::io_offset = CHOFFSETIV(tm_iv, vect);
+
 const size_t  IntVect::IntVectSize = SpaceDim*sizeof(int);
+
 
 //
 // Returns IntVect which is the componentwise integer projection
@@ -144,3 +150,30 @@ static int s_dummyForIntVectCpp( IntVect::InitStatics() );
 // constructor doesn't assign anything to any of the data members.  But we don't
 // want to count on that always being the case.
 #include "NamespaceFooter.H"
+
+#include "UsingNamespace.H"
+#include "BaseNamespaceHeader.H"
+
+///functions for linearization shamelessly grabbed from RealVect
+int linearSize(const IntVect& a_iv)
+{
+  return sizeof(IntVect);
+}
+///functions for linearization
+void linearOut(void* a_outBuf, const IntVect& a_iv)
+{
+  unsigned char* bob = (unsigned char*)a_outBuf;
+  const unsigned char* from = (const unsigned char*)&a_iv;
+  memcpy(bob, from + IntVect::io_offset, SpaceDim*sizeof(int));
+}
+
+///functions for linearization
+void linearIn(IntVect& a_iv, const void* a_inBuf)
+{
+  unsigned char* bob = (unsigned char*)a_inBuf;
+  unsigned char* to = (unsigned char*)&a_iv;
+  memcpy(to + IntVect::io_offset, bob, SpaceDim*sizeof(int));
+}
+
+
+#include "BaseNamespaceFooter.H"

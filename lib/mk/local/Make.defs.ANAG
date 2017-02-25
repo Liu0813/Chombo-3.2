@@ -56,10 +56,7 @@
 #  cxxoptflags : optimization options for the C++ and MPIC++ compilers
 #  cxxprofflags: profiling options for the C++ and MPIC++ compilers
 #  fcppflags   : C-preprocessor flags for Fortran compiles only
-#  fdbgflags   : debug options for the Fortran compiler
-#  foptflags   : optimization options for the Fortran compiler
-#  fprofflags  : profiling options for the Fortran compiler
-#  lddbgflags  : debug options for the linker
+#  fdbgflags   : debug options for the Fortran compiler #  foptflags   : optimization options for the Fortran compiler #  fprofflags  : profiling options for the Fortran compiler #  lddbgflags  : debug options for the linker
 #  ldoptflags  : optimization options for the linker
 #  ldprofflags : profiling options for the linker
 #  flibflags   : options for the linker to specify the Fortran libraries
@@ -77,6 +74,8 @@
 
 makefiles+=local/Make.defs.ANAG
 
+CXX:=g++
+FC:=gfortran
 MPICXX=mpiCC
 
 ifeq ($(OPENMPCC),TRUE)
@@ -84,14 +83,14 @@ ifeq ($(OPENMPCC),TRUE)
 endif
 
 # set default for 64bit mode based on system architecture
-ifeq ($(findstring 64,$(arch)),64)
-  USE_64 = TRUE
-else
-  USE_64 = FALSE
-endif
+#ifeq ($(findstring 64,$(arch)),64)
+#  USE_64 = TRUE
+#else
+#  USE_64 = FALSE
+#endif
 
-syslibflags = -llapack-3 -llapack_atlas
-LAPACKLIBS = -llapack-3 -llapack_atlas 
+syslibflags =  -llapack_atlas -lblas -llapack
+LAPACKLIBS =  -llapack_atlas -lblas -llapack
 
 ifneq ($(USE_HDF),FALSE)
   # if an ANAG HDF5 module is loaded, use its variables
@@ -153,9 +152,6 @@ ifeq ($(USE_FFTW),TRUE)
   endif
 endif
 
-
-cxxname := $(notdir $(firstword $(CXX)))
-fname   := $(notdir $(firstword $(FC)))
 
 # LeakTracer is not on by default, and only supported for g++
 ifeq ($(TRACER),TRUE)

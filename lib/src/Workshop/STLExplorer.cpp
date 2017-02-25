@@ -331,7 +331,7 @@ void STLExplorer::FindCellsOnEdges()
       // check if we've gone too far or wrong direction
       if (alpha[newDir] > 1.0)
         break; // stop if we get beyond v1
-      if (isinf(alpha[newDir]))
+      if (std::isinf(alpha[newDir]))
       {
         // actually print out what alpha was before we set it to INFINITY
         RealVect alphareal;

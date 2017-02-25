@@ -431,7 +431,7 @@ long int Vector<T>::peak=0;
 template <class T>
 ostream& operator<<(ostream& os, const Vector<T>& vec)
 {
-  for (int i=0; i<vec.size(); i++) os<<vec[i]<<" ";
+  for (unsigned int i=0; i<vec.size(); i++) os<<vec[i]<<" ";
   return os;
 }
 

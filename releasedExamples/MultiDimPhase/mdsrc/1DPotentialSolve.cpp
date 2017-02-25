@@ -29,8 +29,7 @@
 //#define SAVE_SPACEDIM CH_SPACEDIM
 #undef CH_SPACEDIM
 #define CH_SPACEDIM 1
-#include "FORT_PROTO.H"
-#include "GradientF.1D_F.H"
+#include "Gradient.H"
 #undef CH_SPACEDIM
 #define CH_SPACEDIM SAVE_SPACEDIM
 #undef SAVE_SPACEDIM
@@ -264,23 +263,10 @@ int doOneDimensionalPotentialSolve(Vector<D2::LevelData<D2::FArrayBox>* >& a_rhs
       for (dit.begin(); dit.ok(); ++dit)
         {
           D1::Box gridBox = levelGrids[dit()];
-          int gradDir = 0;
-#define SAVE_SPACEDIM CH_SPACEDIM
-#undef CH_SPACEDIM
-#define CH_SPACEDIM 1
-
-          FORT_GRADCC(CHF_FRA1(levelGradient[dit()],0),
-                      CHF_CONST_FRA1(levelPotential[dit()],0),
-                      CHF_BOX(gridBox),
-                      CHF_CONST_REAL(a_amrDx[lev]),
-                      CHF_INT(gradDir));
-
-#undef CH_SPACEDIM
-#define CH_SPACEDIM SAVE_SPACEDIM
-#undef SAVE_SPACEDIM
-
-          // really want the negative of the gradient
-          levelGradient[dit] *= -1;
+          D1::FArrayBox& gradient = levelGradient[dit()];
+          const D1::FArrayBox& potential = levelPotential[dit()];
+          D1::Gradient::gradCC(gradient, potential, gridBox, a_amrDx[lev], 0);
+          gradient *= -1;
         }
 
 

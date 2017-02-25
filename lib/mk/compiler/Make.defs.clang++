@@ -15,10 +15,19 @@
 
 makefiles+=local/Make.defs.clang++
 
-defcxxdbgflags = -g -Wall -Wno-overloaded-virtual
-defcxxoptflags = -O4 
+defcxxdbgflags = -std=c++11 -g -Wall -Wno-overloaded-virtual -Wno-sign-compare
+defcxxoptflags = -std=c++11 -O3 -march=native  -Wno-sign-compare
 
-CH_CPP = gcc -E -P -C 
+ifeq ($(OPENMPCC),TRUE)
+  defcxxdbgflags+= -fopenmp
+  defcxxoptflags+= -fopenmp
+else
+  defcxxdbgflags+= -Wno-unknown-pragmas
+  defcxxoptflags+= -Wno-unknown-pragmas
+endif
+
+
+CH_CPP = cpp -E -P -C 
 
 fname   := $(notdir $(firstword $(subst -, ,$(FC))))
 
@@ -26,12 +35,12 @@ ifeq ($(fname),gfortran)
   deffcomflags = -Wno-line-truncation -fno-second-underscore 
   # these flags get rid of unused variables warnings. (-Wno-unused-parameter -Wno-unused-variable)
   deffcomflags += -Wno-unused-parameter -Wno-unused-variable
-  deffoptflags = -O2 -funroll-loops
+  deffoptflags = -O3 -funroll-loops -march=native
   deffdbgflags = -g -ggdb -Wall -W
   defflibflags  += -lgfortran -lm
 else
   deffdbgflags = -g 
-  defoptflags = -O2
+  defoptflags = -O2 -march=native
 #  I don't know what library flag you need if this is gfortran
 endif
 

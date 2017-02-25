@@ -37,6 +37,10 @@ public:
   {
   }
 
+  inline Complex(const complex<Real>& a_arg):complex<Real>(a_arg)
+  {
+  }
+
   ///
   inline Complex(const Real& re, const Real& im):complex<Real>(re, im)
   {
@@ -59,6 +63,15 @@ public:
   {
     return imag();
   };
+
+  inline Complex& operator=(const Complex& rhs)
+  {
+    complex<Real>::operator=(rhs);
+    return *this;
+  }
+
+
+  static inline Complex Zero() {return Complex(0,0);} 
 };
 
 //XXX dont check the compiler -- just assume this will work

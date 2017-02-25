@@ -9,7 +9,7 @@
 #endif
 
 #include "CH_Thread.H"
-#include "BaseNamespaceHeader.H"
+#include "NamespaceHeader.H"
 
 bool onThread0()
 {
@@ -21,6 +21,14 @@ bool onThread0()
   return retval;
 }
 
+int getMaxThreads()
+{
+  int retval = 1;
+#ifdef _OPENMP
+  retval = omp_get_max_threads();
+#endif
+  return retval;
+}
 
 
-#include "BaseNamespaceFooter.H"
+#include "NamespaceFooter.H"

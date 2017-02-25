@@ -629,9 +629,11 @@ amrPHASE::timeStep(Real a_dt)
 
   pout () << "amrPHASE::timestep "
           << ",      end time = "
-          << setiosflags(ios::fixed) << setprecision(6) << setw(12) << m_time
+         // << setiosflags(ios::fixed) << setprecision(6) << setw(12) 
+          << m_time
           << ", dt = "
-          << setiosflags(ios::fixed) << setprecision(6) << setw(12) << a_dt
+        //  << setiosflags(ios::fixed) << setprecision(6) << setw(12) 
+          << a_dt
           << endl;
 
 

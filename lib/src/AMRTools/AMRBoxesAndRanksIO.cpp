@@ -473,7 +473,7 @@ int determineNumberBoxesOnLine(const string sline)
 bool getNextValidLine(std::ifstream& ifs, string& sline)
 {
   bool ok;
-  while ((ok = getline(ifs, sline, '\n')))
+  while ((ok = bool(getline(ifs, sline, '\n'))))
   {
     if (isCommentOrBlankLine(sline))
     {

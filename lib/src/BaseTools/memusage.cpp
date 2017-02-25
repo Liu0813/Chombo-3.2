@@ -43,15 +43,15 @@ void print_memory_line(const char *s)
 #ifdef CH_Linux
   Real peakRSS, peakVirtualMem;
   getPeakMemoryFromOS(peakRSS, peakVirtualMem);
-  sprintf(temp, "%26.26s|Mem Usage: OS=%8.3f (vm=%8.3f) MT_peak=%8.3f MT_current=%8.3f  OSPeakRSS=%8.3f (vm=%8.3f) (MB)\n",
+  sprintf(temp, "%26.26s|Mem Usage: OS=%10.3f (vm=%10.3f) MT_peak=%10.3f MT_current=%10.3f  OSPeakRSS=%10.3f (vm=%10.3f) (MB)\n",
           s, residentSetSize, size, memtrackPeakMemory, memtrackCurrentMemory, peakRSS, peakVirtualMem);
 #else
-  sprintf(temp, "%26.26s|Mem Usage: OS=%8.3f (vm=%8.3f) MT_peak=%8.3f MT_current=%8.3f (MB)\n",
+  sprintf(temp, "%26.26s|Mem Usage: OS=%10.3f (vm=%10.3f) MT_peak=%10.3f MT_current=%10.3f (MB)\n",
           s, residentSetSize, size, memtrackPeakMemory, memtrackCurrentMemory);
 #endif
 
 #else
-  sprintf(temp, "%26.26s|Mem Usage: OS=%8.3f (MB) MT is off\n",
+  sprintf(temp, "%26.26s|Mem Usage: OS=%10.3f (MB) MT is off\n",
           s, get_memory_usage_from_OS());
 #endif
   pout() << temp;

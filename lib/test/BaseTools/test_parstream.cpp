@@ -147,7 +147,7 @@ void Test::Testpout( int argc, char *argv[] )
   { // test that the stream is ok
 #ifndef CH_MPI
     Test( "serial pout() is std::cout" );
-    Fail( pout() != std::cout );
+    Fail( &(pout()) != &(std::cout) );
 #endif
     Test( "that pout() is initialized in good state" );
     Fail( !pout() ,false );

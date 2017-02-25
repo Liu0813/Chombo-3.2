@@ -92,6 +92,7 @@ main(int argc ,char* argv[])
     if ( verbose )
       pout() << indent2 << "Beginning " << pgmname << " ..." << endl ;
 
+    if(0)
     { // Test File input/output in Chombo Fortran
       int i1 = 23 ;
       Real r1 = 23.45 ;

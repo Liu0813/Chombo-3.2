@@ -19,6 +19,7 @@
 #include "Vector.H"
 #include "IndexTM.H"
 #include "Misc.H"
+#include <functional>
 
 namespace BLfacade
 {
@@ -26,6 +27,7 @@ namespace BLfacade
 }
 
 #include "NamespaceHeader.H"
+
 
 //template<typename T, int n>
 //class IndexTM;
@@ -461,6 +463,28 @@ public:
   */
   IntVect& max (const IntVect& p);
 
+  ///return the maximum value in the intvect
+  int max() const
+  {
+    int retval = vect[0];
+    for(int idir = 1; idir < SpaceDim; idir++)
+      {
+        retval = Max(retval, vect[idir]);
+      }
+    return retval;
+  }
+  
+  ///return the minimum value in the intvect
+  int min() const
+  {
+    int retval = vect[0];
+    for(int idir = 1; idir < SpaceDim; idir++)
+      {
+        retval = Min(retval, vect[idir]);
+      }
+    return retval;
+  }
+  
   ///
   /**
      Returns the IntVect that is the component-wise maximum of two
@@ -637,6 +661,8 @@ public:
 
   /*@}*/
 
+  static size_t io_offset;
+
 protected:
   //
   // Box is a friend of ours.
@@ -658,6 +684,27 @@ protected:
   */
   static const size_t IntVectSize;
 };
+#include "NamespaceFooter.H"
+
+namespace std { template <> inline bool less<CH_XD::IntVect>::operator()(const CH_XD::IntVect& a, const CH_XD::IntVect& b) const { return a.lexLT(b);}
+}
+#include "BaseNamespaceHeader.H"
+
+#include "NamespaceVar.H"
+
+///functions for linearization
+int linearSize(const CH_XDIR::IntVect& a_iv);
+
+///functions for linearization
+void linearOut(void* a_outBuf, const CH_XDIR::IntVect& a_iv);
+
+///functions for linearization
+void linearIn(CH_XDIR::IntVect& a_iv, const void* a_inBuf);
+
+#include "BaseNamespaceFooter.H"
+
+#include "NamespaceHeader.H"
+
 
 //
 // Static initialization.  Gotta make sure there are no static object
@@ -680,6 +727,8 @@ static int s_dummyForIntVectH = IntVect::InitStatics();
 // {
 //     D_EXPR6(vect[0] = 0, vect[1] = 0, vect[2] = 0);
 // }
+
+//template <> inline constexpr bool std::less<IntVect>::operator()(const IntVect& a, const IntVect& b) const { return a.lexLT(b);};
 
 inline
 IntVect::IntVect (D_DECL6(int i, int j, int k,
