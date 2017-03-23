@@ -462,6 +462,7 @@ oneStep(Vector<T* >&       a_phiNew,
   //set time to t_old
   setTime(a_told);
   //this makes a_phiNew hold (k*a I + mu3 L) phi^n
+  // false means that we're using the inhomogenous form of the BCs
   applyHelm(a_phiNew, a_phiOld, a_lbase, a_lmax, m_mu3, a_dt, false);
 
   for (int ilev = a_lbase; ilev <= a_lmax; ilev++)

@@ -745,6 +745,8 @@ Real AMRMultiGrid<T>::computeAMRResidual(Vector<T*>&       a_phi,
 }
 
 /************/
+// old inefficient way of doing this
+/*
 template <class T>
 void AMRMultiGrid<T>::computeAMROperator(Vector<T*>&       a_lph,
                                          Vector<T*>&       a_phi,
@@ -766,6 +768,63 @@ void AMRMultiGrid<T>::computeAMROperator(Vector<T*>&       a_lph,
       m_op[ilev]->scale(*a_lph[ilev], -1.);
     }
 }
+*/
+template <class T>
+void AMRMultiGrid<T>::computeAMROperator(Vector<T*>&       a_lphi,
+                                         Vector<T*>&       a_phi,
+                                         int               l_max,
+                                         int               l_base,
+                                         bool              a_homogeneousBC)
+{
+  CH_TIME("AMRMultiGrid<T>::computeAMROperator");
+ 
+  for(int ilev=l_base; ilev<=l_max; ilev++)
+    { 
+      if (l_max != l_base)
+        {
+          if (ilev == l_max)
+            {
+              m_op[l_max]->AMROperatorNF(*(a_lphi[l_max]),*(a_phi[l_max]),
+                                         *(a_phi[l_max-1]), a_homogeneousBC);
+            }
+          else if (ilev == l_base)
+            {
+              if (l_base == 0)
+                {
+                  m_op[l_base]->AMROperatorNC(*(a_lphi[l_base]), *(a_phi[l_base+1]),
+                                              *(a_phi[l_base]),
+                                              a_homogeneousBC, m_op[l_base+1]);
+                }
+              else
+                {
+                  m_op[l_base]->AMROperator(*a_lphi[l_base], *a_phi[l_base+1], *a_phi[l_base],
+                                            *a_phi[l_base-1],
+                                            a_homogeneousBC, m_op[l_base+1]);
+                }
+            }
+          else
+            {
+              m_op[ilev]->AMROperator(*a_lphi[ilev], *a_phi[ilev+1], *a_phi[ilev],
+                                      *a_phi[ilev-1], 
+                                      a_homogeneousBC, m_op[ilev+1]);
+            }
+        }
+      else
+        {
+          CH_assert(ilev == l_base);
+          if (l_base == 0)
+            {
+              m_op[l_max]->applyOp(*a_lphi[l_max], *a_phi[l_max], a_homogeneousBC);
+            }
+          else
+            {
+              m_op[l_max]->AMROperatorNF(*(a_lphi[l_max]), *(a_phi[l_max]),
+                                         *(a_phi[l_max-1]), 
+                                         a_homogeneousBC);
+            }
+        }
+    }
+} 
 
 /************/
 template <class T>

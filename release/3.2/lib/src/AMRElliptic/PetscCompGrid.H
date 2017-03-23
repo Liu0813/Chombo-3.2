@@ -38,7 +38,8 @@ public:
 
   //! Base class constructor. Called by all subclass constructors.
   PetscCompGrid(int a_dof) : m_gid0(0),m_mat(0),m_Pmat(0),m_CFStencilRad(2),m_writeMatlab(false),
-			     m_verbose(0),m_dof(a_dof),m_num_extra_nnz(0),m_repartition(PETSC_FALSE),
+			     m_averageFineSolutionToCoarse(true),m_verbose(0),m_dof(a_dof),
+			     m_num_extra_nnz(0),m_repartition(PETSC_FALSE),
 			     m_patch_size(0),m_from_petscscat(0)
   {
 #if defined(PETSC_USE_LOG)
@@ -62,7 +63,8 @@ public:
   void setMatlab(bool b=true) {m_writeMatlab = b;}
   void setRepartition(bool b=true) {m_repartition = (b ? PETSC_TRUE : PETSC_FALSE);}
   void setVerbose(int a_v){ m_verbose=a_v;}
-
+  void setAverageFineSolutionToCoarse(bool b=true) {m_averageFineSolutionToCoarse = b;}
+  
   // main Mat creation routines
   PetscErrorCode createMatrix(int a_makePmat=0);
   // solver uses these, not used in base class, used in app code
@@ -112,6 +114,7 @@ protected:
   int m_CFStencilRad;
   BaseFab<FourthOrderInterpStencil*> m_FCStencils;
   bool m_writeMatlab;
+  bool m_averageFineSolutionToCoarse;
   int m_verbose;
   const int m_dof;
 #if defined(PETSC_USE_LOG)

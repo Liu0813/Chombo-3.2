@@ -738,7 +738,7 @@ PetscErrorCode PetscSolver<T>::putChomboInPetsc( Vec out, const T& a_phi )
             {
               PetscScalar v = phiFab(iv,mm);
               v += addBCrhsValue(iv,a_phi,dit,idx2);
-              if (isnan(v)) v = 0;
+              if (std::isnan(v)) v = 0;
               ierr = VecSetValues(out,1,&ki,&v,INSERT_VALUES);
             }
         }
