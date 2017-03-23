@@ -402,8 +402,8 @@ private:
       }
 
     //this makes a_phiNew hold (k*a I + mu3 k L) phi^n
-    //'true' apply CF and domain BC
-    this->applyHelm(a_phiNew,   a_phiOld, &coarseData, a_level, m_mu3, a_dt, true);
+    //'false' apply inhomogeneousCF and domain BC
+    this->applyHelm(a_phiNew,   a_phiOld, &coarseData, a_level, m_mu3, a_dt, false);
     this->incrementFlux(a_flux, a_phiOld,              a_level, m_mu3, a_dt, -1., false);
 
     //this makes rhs hold (k*a I + mu3 L) phi^n + dt(k*a I +mu4 L) S/a

@@ -163,9 +163,10 @@ class BaseLevelBackwardEuler : public BaseLevelHeatSolver<LevelDataType, FluxDat
       {
         this->m_ops[a_level-1]->create(coarseData, *a_crsePhiOldPtr);
         this->m_ops[a_level-1]->setToZero(coarseData);
-
+        // Backward Euler solves at the new time
+        Real newTime = a_oldTime + a_dt;
         this->timeInterp(coarseData, *a_crsePhiOldPtr, *a_crsePhiNewPtr,
-                         a_oldTime, a_crseOldTime, a_crseNewTime, a_level-1);
+                         newTime, a_crseOldTime, a_crseNewTime, a_level-1);
 
       }
 

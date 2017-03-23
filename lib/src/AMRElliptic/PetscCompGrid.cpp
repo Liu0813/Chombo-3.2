@@ -10,10 +10,12 @@
 
 #include "PetscCompGrid.H"
 #include "IntVectSet.H"
+#include "CoarseAverage.H"
 #include "SPMD.H"
 
 #include "NamespaceHeader.H"
- 
+
+
 std::ostream& operator<< (std::ostream& os, GID_type a_type)
 {
   switch (a_type)
@@ -1037,15 +1039,25 @@ PetscCompGrid::InterpToCoarse(IntVect a_iv,int a_ilev,const DataIndex &a_di, Ste
           IntVect bndryIndex = getCFStencil(cdom,cjiv);
           const FourthOrderInterpStencil *interp = m_FCStencils(bndryIndex,0);
           const FArrayBox &coarseToFineFab = interp->m_coarseToFineFab;
-          const Vector<int> &coarseBaseIndices = interp->m_coarseBaseIndices;
           Vector<StencilNode> new_vals(interp->m_stencilSize);
-          for (PetscInt cidx=0,kk=0;cidx < interp->m_stencilSize;cidx++)
+          // OLD WAY: FourthOrderInterpStencil::m_coarseBaseIndices
+          // WAS Vector<int>, is now Vector<IntVect>.
+          //          const Vector<int> &coarseBaseIndices = interp->m_coarseBaseIndices;
+          //          Vector<StencilNode> new_vals(interp->m_stencilSize);
+          //          for (PetscInt cidx=0,kk=0;cidx < interp->m_stencilSize;cidx++)
+          //            {
+          //              IntVect civ = cjiv;
+          //              for (int dir=0;dir<CH_SPACEDIM;++dir,kk++)
+          //                {
+          //                  civ[dir] += coarseBaseIndices[kk];
+          //                }
+          //              Real val = coarseToFineFab(fividx,cidx);
+          //              NodeDefine(new_vals[cidx],civ,a_ilev-1,val);
+          //            }
+          const Vector<IntVect> &coarseBaseIndices = interp->m_coarseBaseIndices;
+          for (PetscInt cidx=0;cidx < interp->m_stencilSize;cidx++)
             {
-              IntVect civ = cjiv;
-              for (int dir=0;dir<CH_SPACEDIM;++dir,kk++) 
-                {
-                  civ[dir] += coarseBaseIndices[kk];              
-                }
+              IntVect civ = cjiv + coarseBaseIndices[cidx];
               Real val = coarseToFineFab(fividx,cidx);
               NodeDefine(new_vals[cidx],civ,a_ilev-1,val);
             }
@@ -1350,6 +1362,17 @@ PetscCompGrid::putPetscInChombo(Vec a_x, Vector<LevelData<FArrayBox> * > &a_phi)
         }
       //a_phi[ilev]->exchange();
     }
+  // average fine level solution onto coarse levels
+  if (m_averageFineSolutionToCoarse)
+    {
+      for (int lev = a_phi.size() -1; lev > 0; lev--)
+	{
+	  CoarseAverage avg(a_phi[lev]->disjointBoxLayout(),a_phi[lev-1]->disjointBoxLayout(),
+			    a_phi[lev]->nComp(),m_refRatios[lev-1]);
+	  avg.averageToCoarse(*a_phi[lev-1], *a_phi[lev]);
+	}
+    }
+  
   ierr = VecRestoreArrayRead(xx,&avec);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
