@@ -40,12 +40,12 @@ getcompilerversion := $(CHOMBO_HOME)/mk/compilerVersion.pl
 
 # '-EP' is different from '-E -P' in icc	
 # -C disable stripping out C++ comments, which are valid code in Fortran
-CH_CPP = $(CXX) -EP -C
+CH_CPP = $(CXX) -EP 
 
 _cxxbaseflags = -restrict -m64 -std=c++11
 
 cxxdbgflags += -g -Wall -Wextra -pedantic -fstack-protector-all $(_cxxbaseflags)
-cxxoptflags += -O3 -m64 -qopt-multi-version-aggressive $(_cxxbaseflags)
+cxxoptflags += -O3 -qopt-multi-version-aggressive $(_cxxbaseflags)
 
 defldflags = -static-intel
 
